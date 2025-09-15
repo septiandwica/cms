@@ -1,0 +1,20 @@
+{
+  "name": "mealhub",
+  "version": "1.0.0",
+  "description": "mealhub a bintang toedjoe catering management system",
+  "keywords": [
+    "catering",
+    "meal"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https//:github.com/septiandwica/cms"
+  },
+  "license": "Apache-2.0",
+  "author": "septiandwica",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
