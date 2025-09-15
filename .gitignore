@@ -1,1 +1,9 @@
+# Global
 .DS_Store
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Server specific
+server/node_modules/
