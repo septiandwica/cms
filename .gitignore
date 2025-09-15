@@ -7,3 +7,5 @@ node_modules/
 
 # Server specific
 server/node_modules/
+
+server/.env
