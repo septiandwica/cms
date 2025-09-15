@@ -5,7 +5,10 @@
 node_modules/
 */node_modules/
 
+# Environment variables
+.env
+**/.env
+!**/.env.example
+
 # Server specific
 server/node_modules/
-
-server/.env
