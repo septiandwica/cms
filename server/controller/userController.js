@@ -44,4 +44,42 @@ const getAllUsers = async (req, res, next) => {
   }
 };
 
+const updateUser = async (req, res, next) => {  
+  try {
+    const userId = req.params.id;
+    const { name, email, phone, status, role_id, department_id } = req.body;
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update fields jika ada di body
+    if (name !== undefined) user.name = name;
+    if (email !== undefined) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (status !== undefined) user.status = status;
+    if (role_id !== undefined) user.role_id = role_id;
+    if (department_id !== undefined) user.department_id = department_id;
+
+    await user.save();
+
+    const safeUser = user.get({ plain: true });
+    delete safeUser.password;
+
+    return res.json({ message: "User updated successfully", user: safeUser });
+
+  } catch (err) {
+    console.error("[updateUser]", err);
+    if (err.name === "SequelizeForeignKeyConstraintError") {
+      return res.status(400).json({ message: "Invalid foreign key (e.g., role_id not found)" });
+    }
+    if (err.name === "SequelizeValidationError") {
+      const details = err.errors?.map(e => e.message);
+      return res.status(422).json({ message: "Validation error", details });
+    }
+    return next(err); // serahkan ke global error handler
+  }
+}
+
 module.exports = { getMe, getAllUsers };

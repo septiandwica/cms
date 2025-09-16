@@ -33,6 +33,8 @@ app.use(passport.initialize());
 app.use(passport.initialize());
 app.use("/auth", require("./routes/authRouter.js"));
 app.use("/users", require("./routes/userRouter.js"));
+app.use("/roles", require("./routes/roleRouter.js"));
+app.use("/locations", require("./routes/locationRouter.js"));
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
