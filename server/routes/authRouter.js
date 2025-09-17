@@ -1,19 +1,24 @@
 const express = require("express");
-const { registerUser, loginUser, logoutUser, changePassword } = require("../controller/authController.js");
+const {
+  registerUser,
+  loginUser,
+  logoutUser,
+  changePassword,
+} = require("../controller/authController.js");
 
-const { isLoggedIn } = require("../middleware/authMiddleware");
+const { isLoggedIn } = require("../middleware/authMiddleware.js");
+const { authLimiter,registerLimiter, loginLimiter } = require("../middleware/authLimiterMiddleware.js");
 
 const router = express.Router();
 
-router.post("/register", registerUser);
+router.use(authLimiter);
 
-router.post("/login", loginUser);
+router.post("/register",registerLimiter, registerUser);
+router.post("/login", loginLimiter, loginUser);
 
+// Logout
 router.post("/logout", logoutUser);
 
-// ganti password (boleh diri sendiri; admin bisa override)
 router.patch("/:id/password", isLoggedIn, changePassword);
-
-
 
 module.exports = router;

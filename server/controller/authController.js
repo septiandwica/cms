@@ -1,6 +1,7 @@
 const { User } = require("../models");
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
+const { ROLES } = require("../middleware/roleMiddleware");
 
 const cookieOpts = {
   httpOnly: true,                 
@@ -115,21 +116,19 @@ const changePassword = async (req, res, next) => {
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Jika yang mengganti adalah dirinya sendiri → wajib verifikasi oldPassword
-    const isSelf = String(req.user.id) === String(id);
+    const isSelf  = String(req.user.id) === String(id);
+    const isAdmin = req.user.roleName === ROLES.ADMIN;
 
-    if (isSelf && !isAdmin) {
-      if (!oldPassword) {
-        return res.status(400).json({ message: "oldPassword is required" });
-      }
+    // Jika bukan admin, wajib verifikasi oldPassword
+    if (!isAdmin) {
+      if (!isSelf) return res.status(403).json({ message: "Forbidden" });
+      if (!oldPassword) return res.status(400).json({ message: "oldPassword is required" });
       const match = await bcrypt.compare(oldPassword, user.password);
       if (!match) return res.status(401).json({ message: "Old password is incorrect" });
     }
 
-    const hashed = await bcrypt.hash(newPassword, 10);
-    user.password = hashed;
+    user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
-
     return res.json({ message: "Password updated" });
   } catch (err) {
     return next(err);

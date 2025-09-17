@@ -17,6 +17,14 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "location_id",
         as: "location",
       });
+      Vendor_Catering.belongsTo(models.Shift, {
+        foreignKey: "shift_id",
+        as: "shift",
+      });
+      Vendor_Catering.hasMany(models.Meal_Menu, {
+        foreignKey: "vendor_catering_id",
+        as: "meal_menus",
+      });
     }
   }
   Vendor_Catering.init(
@@ -40,6 +48,10 @@ module.exports = (sequelize, DataTypes) => {
       address: {
         type: DataTypes.STRING,
       },
+      status:{
+        type: DataTypes.ENUM("active", "inactive"),
+        allowNull: false,
+      }
     },
     {
       sequelize,

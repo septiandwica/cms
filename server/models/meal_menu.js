@@ -21,6 +21,10 @@ module.exports = (sequelize, DataTypes) => {
       name: { type: DataTypes.STRING, allowNull: false },
       nutrition_facts: { type: DataTypes.TEXT },
       for_date: { type: DataTypes.DATEONLY, allowNull: false },
+      status: {
+        type: DataTypes.ENUM("approved", "rejected", "pending"),
+        allowNull: false,
+      },
     },
     {
       sequelize,

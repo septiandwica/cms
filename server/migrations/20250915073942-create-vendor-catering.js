@@ -39,6 +39,10 @@ module.exports = {
       address:{
          type: Sequelize.STRING,
       },
+      status:{
+        type: Sequelize.ENUM("active", "inactive"),
+        allowNull: false,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE
