@@ -97,6 +97,44 @@ const loginUser = async (req, res) => {
   }
 };
 
+
+/**
+ * PATCH /users/:id/password
+ * Body: { oldPassword, newPassword }
+ * Admin bisa ganti tanpa oldPassword (opsional—ubah sesuai kebijakanmu).
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const { id } = req.params;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+
+    const user = await User.findByPk(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Jika yang mengganti adalah dirinya sendiri → wajib verifikasi oldPassword
+    const isSelf = String(req.user.id) === String(id);
+
+    if (isSelf && !isAdmin) {
+      if (!oldPassword) {
+        return res.status(400).json({ message: "oldPassword is required" });
+      }
+      const match = await bcrypt.compare(oldPassword, user.password);
+      if (!match) return res.status(401).json({ message: "Old password is incorrect" });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+
+    return res.json({ message: "Password updated" });
+  } catch (err) {
+    return next(err);
+  }
+};
 const logoutUser = async (_req, res) => {
   // Hapus cookie di browser
   res.clearCookie("jwt", {
@@ -108,4 +146,4 @@ const logoutUser = async (_req, res) => {
 };
 
 
-module.exports = { registerUser, loginUser, logoutUser };
+module.exports = { registerUser, loginUser, changePassword, logoutUser };

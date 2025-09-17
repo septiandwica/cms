@@ -1,43 +1,20 @@
 const express = require("express");
 const { isLoggedIn } = require("../middleware/authMiddleware");
 const { requireRoles, ROLES } = require("../middleware/roleMiddleware");
-const locationController = require("../controller/locationController"); 
+const locationController = require("../controller/locationController");
 
 const router = express.Router();
 
-router.get(
-  "/list",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
-  locationController.listLocation
-);
+router.use(isLoggedIn, requireRoles(ROLES.ADMIN));
 
-router.post(
-  "/create",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
-  locationController.createLocation
-);
+router.get("/list", locationController.listLocation);
 
-router.get(
-  "/:id",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
-  locationController.getLocationById
-);
+router.post("/create", locationController.createLocation);
 
-router.put(
-  "/:id",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
-  locationController.updateLocation
-);
+router.get("/:id", locationController.getLocationById);
 
-router.delete(
-  "/:id",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
-  locationController.deleteLocation
-);
+router.put("/:id", locationController.updateLocation);
+
+router.delete("/:id", locationController.deleteLocation);
 
 module.exports = router;

@@ -1,14 +1,22 @@
+// routes/users.js
 const express = require("express");
 const { isLoggedIn } = require("../middleware/authMiddleware");
 const { requireRoles, ROLES } = require("../middleware/roleMiddleware");
-const { getAllUsers, getMe } = require("../controller/userController");
+const userController = require("../controller/userController");
 
 const router = express.Router();
 
-router.get("/me", isLoggedIn, getMe);
+router.get("/me", isLoggedIn, userController.getMe);
 
-router.get("/all", isLoggedIn, requireRoles(ROLES.ADMIN), getAllUsers);
+// daftar & detail
+router.get("/list", isLoggedIn, requireRoles(ROLES.ADMIN), userController.getAllUsers);
+router.get("/:id", isLoggedIn, requireRoles(ROLES.ADMIN), userController.getUserById);
 
-router.get("/dashboard", isLoggedIn, requireRoles(ROLES.ADMIN, ROLES.GENERAL_AFFAIR));
+// create/update/delete
+router.post("/create", isLoggedIn, requireRoles(ROLES.ADMIN), userController.createUser);
+router.put("/:id", isLoggedIn, requireRoles(ROLES.ADMIN), userController.updateUser);
+router.delete("/:id", isLoggedIn, requireRoles(ROLES.ADMIN), userController.deleteUser);
+
+
 
 module.exports = router;

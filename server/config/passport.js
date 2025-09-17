@@ -1,6 +1,6 @@
 // config/passport.js
 const { Strategy: JwtStrategy, ExtractJwt } = require("passport-jwt");
-const { User, Role } = require("../models"); 
+const { User, Role, Department, Location } = require("../models");
 
 // Ambil token dari cookie 'jwt'
 const cookieExtractor = (req) => (req?.cookies?.jwt ? req.cookies.jwt : null);
@@ -18,7 +18,17 @@ module.exports = (passport) => {
     new JwtStrategy(opts, async (jwt_payload, done) => {
       try {
         const user = await User.findByPk(jwt_payload.id, {
-          include: [{ model: Role, as: "role" }], 
+          include: [
+            { model: Role, as: "role", attributes: ["id", "name"] },
+            {
+              model: Department,
+              as: "department",
+              attributes: ["id", "name", "location_id"],
+              include: [
+                { model: Location, as: "location", attributes: ["id", "name"] },
+              ],
+            },
+          ],
         });
         if (!user) return done(null, false);
 

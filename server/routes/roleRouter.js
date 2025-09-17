@@ -5,38 +5,33 @@ const roleController = require("../controller/roleController"); // pastikan path
 
 const router = express.Router();
 
+router.use(
+  isLoggedIn,
+  requireRoles(ROLES.ADMIN)
+);
+
 router.get(
   "/list",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
   roleController.listRoles
 );
 
 router.post(
   "/create",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
   roleController.createRole
 );
 
 router.get(
   "/:id",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
   roleController.getRoleById
 );
 
 router.put(
   "/:id",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
   roleController.updateRole
 );
 
 router.delete(
   "/:id",
-  isLoggedIn,
-  requireRoles(ROLES.ADMIN),
   roleController.deleteRole
 );
 
