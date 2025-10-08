@@ -12,8 +12,8 @@ router.use(
   requireRoles(ROLES.ADMIN, ROLES.GENERAL_AFFAIR)
 );
 
-router.get("/list", departmentController.listDepartment);    
-router.post("/create", departmentController.createDepartment);
+router.get("/", departmentController.listDepartment);    
+router.post("/", departmentController.createDepartment);
 router.get("/:id", departmentController.getDepartmentById);
 router.put("/:id", departmentController.updateDepartment);
 router.delete("/:id", departmentController.deleteDepartment);

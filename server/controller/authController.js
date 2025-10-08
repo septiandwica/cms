@@ -1,4 +1,4 @@
-const { User } = require("../models");
+const { User, Role, Department } = require("../models");
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
 const { ROLES } = require("../middleware/roleMiddleware");
@@ -49,23 +49,12 @@ const registerUser = async (req, res) => {
 
     return res.status(201).json({
       message: "User registered successfully",
+      token,            
       user: safeUser
     });
 
   } catch (err) {
     console.error("[registerUser]", err);
-
-    if (err.name === "SequelizeUniqueConstraintError") {
-      const field = err?.errors?.[0]?.path || "field";
-      return res.status(400).json({ message: `${field} already in use` });
-    }
-    if (err.name === "SequelizeForeignKeyConstraintError") {
-      return res.status(400).json({ message: "Invalid foreign key (e.g., role_id not found)" });
-    }
-    if (err.name === "SequelizeValidationError") {
-      const details = err.errors?.map(e => e.message);
-      return res.status(422).json({ message: "Validation error", details });
-    }
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -76,7 +65,22 @@ const loginUser = async (req, res) => {
     return res.status(400).json({ message: "Email and password are required" });
 
   try {
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ 
+      where: { email },
+      include: [
+        {
+          model: Role,
+          as: 'role',
+          attributes: ['id', 'name']
+        },
+        {
+          model: Department, // pastikan model ini sudah di-import
+          as: 'department',
+          attributes: ['id', 'name'] 
+        }
+      ]
+    });
+
     if (!user)
       return res.status(401).json({ message: "Invalid email or password" });
 
@@ -89,14 +93,22 @@ const loginUser = async (req, res) => {
 
     const safeUser = user.get({ plain: true });
     delete safeUser.password;
+    safeUser.role = user.role;
+    safeUser.department = user.department; // tambahkan department
 
-    return res.json({ message: "Login successful", user: safeUser });
+    return res.json({
+      message: "Login successful",
+      token,            
+      user: safeUser
+    });
 
   } catch (err) {
     console.error("[loginUser]", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
 
 
 /**

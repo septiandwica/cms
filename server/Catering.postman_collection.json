@@ -1,0 +1,1368 @@
+{
+	"info": {
+		"_postman_id": "0b5bf4ee-7227-44ea-8a18-b271c279fb09",
+		"name": "Catering",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "24829911"
+	},
+	"item": [
+		{
+			"name": "CSRF Token",
+			"item": [
+				{
+					"name": "Csrf Token",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"tian@tateta.com\",\n  \"password\": \"RahasiaBanget123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/csrf-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"csrf-token"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"septiandwica03@gmail.com\",\n  \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Budi\",\n    \"email\": \"budi@example.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"oldPassword\": \"password1234\",\n  \"newPassword\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/3/password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"auth",
+								"3",
+								"password"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Role",
+			"item": [
+				{
+					"name": "List Role",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/roles/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"roles",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Role By Id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/roles/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"roles",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Role",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"User\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/roles/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"roles",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Role",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"user\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/roles/6",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"roles",
+								"6"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Role",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/roles/6",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"roles",
+								"6"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "All Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create User",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"department_id\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/users/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/3",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"3"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Location",
+			"item": [
+				{
+					"name": "List Location",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/locations/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"locations",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Location By Id",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Cikarang\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/locations/2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"locations",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Location",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Cikarang\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/locations/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"locations",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Location",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "CrVvOWjJ-y1Pd_IpC1Gy8HW4mryYct2O3pV8",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Pulogadung\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/locations/2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"locations",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Location",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/locations/2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"locations",
+								"2"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Department",
+			"item": [
+				{
+					"name": "List Department",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/departments/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"departments",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Department By Id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/departments/3",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"departments",
+								"3"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Department",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"GA\",\n  \"location_id\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/departments/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"departments",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Department",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"General Affair\",\n  \"location_id\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/departments/3",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"departments",
+								"3"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Department",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/departments/2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"departments",
+								"2"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Shift",
+			"item": [
+				{
+					"name": "List Shift",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/shifts/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"shifts",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Shift by Id",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "pLXYz82v-2fZvXKpDkaEquZ9OO5BtERcTLaA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Shift 2\",\n    \"timeOn\": \"18:00:00\",\n    \"startAt\": \"15:00:00\",\n    \"endAt\": \"23:00:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/shifts/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"shifts",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Shift",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "pLXYz82v-2fZvXKpDkaEquZ9OO5BtERcTLaA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Shift 1 (Pagi)\",\n  \"timeOn\": \"11:00:00\",\n  \"startAt\": \"07:00:00\",\n  \"endAt\": \"16:00:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/shifts/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"shifts",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Shift",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "pLXYz82v-2fZvXKpDkaEquZ9OO5BtERcTLaA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Shift 1 (Pagi)\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/shifts/2",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"shifts",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Shift",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "pLXYz82v-2fZvXKpDkaEquZ9OO5BtERcTLaA",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/shifts/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"shifts",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Vendor Catering",
+			"item": [
+				{
+					"name": "List Vendor",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/vendor-caterings/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendor-caterings",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Vendor by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/vendor-caterings/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendor-caterings",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Vendor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "pLXYz82v-2fZvXKpDkaEquZ9OO5BtERcTLaA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": 7,\n  \"name\": \"Catering Sejahtera\",\n  \"location_id\": 1,\n  \"shift_id\": 2,\n  \"address\": \"Jl. Merpati No. 10, Jakarta\",\n  \"status\": \"active\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendor-caterings/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendor-caterings",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Vendor",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "pLXYz82v-2fZvXKpDkaEquZ9OO5BtERcTLaA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"address\": \"Jababeka Cikarang\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/vendor-caterings/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendor-caterings",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Vendor",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "pLXYz82v-2fZvXKpDkaEquZ9OO5BtERcTLaA",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"address\": \"Jababeka Cikarang\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/vendor-caterings/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"vendor-caterings",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Meal Menu",
+			"item": [
+				{
+					"name": "List Meal Menu",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/meal-menus/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Meal Menu by Id",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Meal Menu",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Meal Menu",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"rejected\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Meal Menu",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "QR Code",
+			"item": [
+				{
+					"name": "List QR Code Usr",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/meal-menus/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "QR Code by Id",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create QR Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"create"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update QR Code",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"rejected\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/qr-codes/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"qr-codes",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete QR Code",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/qr-codes/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"qr-codes",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "List Order",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/meal-menus/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Order by Id",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/create",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"create"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Order Details",
+			"item": [
+				{
+					"name": "List Order Usr",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/meal-menus/list",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"list"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Order by Id",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "XSRF-TOKEN",
+								"value": "UsUOsPJh-OXKeJSEKjyMifdEA4Qtvpl7FRDM",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"vendor_catering_id\": 1,\n  \"name\": \"Paket A\",\n  \"descriptions\": \"Grilled chicken with teriyaki glaze, steamed rice, veggies, and miso soup.\",\n  \"nutrition_facts\": \"Energy: 620 kcal; Protein: 32 g; Fat: 18 g; Carbs: 82 g; Sodium: 1.8 g\",\n  \"for_date\": \"2025-09-18\",\n  \"status\": \"pending\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/meal-menus/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"meal-menus",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "",
+			"type": "default"
+		}
+	]
+}

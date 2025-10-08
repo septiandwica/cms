@@ -7,9 +7,9 @@ const router = express.Router();
 
 router.use(isLoggedIn, requireRoles(ROLES.ADMIN));
 
-router.get("/list", roleController.listRoles);
+router.get("/", roleController.listRoles);
 
-router.post("/create", roleController.createRole);
+router.post("/", roleController.createRole);
 
 router.get("/:id", roleController.getRoleById);
 

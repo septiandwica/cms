@@ -7,9 +7,9 @@ const router = express.Router();
 
 router.use(isLoggedIn, requireRoles(ROLES.ADMIN));
 
-router.get("/list", locationController.listLocation);
+router.get("/", locationController.listLocation);
 
-router.post("/create", locationController.createLocation);
+router.post("/", locationController.createLocation);
 
 router.get("/:id", locationController.getLocationById);
 

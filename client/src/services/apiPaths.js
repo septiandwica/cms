@@ -1,0 +1,92 @@
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:2025";
+
+export const API_PATHS = {
+  AUTH: {
+    LOGIN: "/auth/login",
+    LOGOUT: "/auth/logout",
+    REGISTER: "/auth/register",
+    CHANGE_PASSWORD: "/auth/change-password",
+  },
+  USERS: {
+    GET_ALL: "/users",
+    GET_PROFILE: "/users/me",
+    GET_BY_ID: (id) => `/users/${id}`,
+    CREATE: "/users",
+    UPDATE: (id) => `/users/${id}`,
+    DELETE: (id) => `/users/${id}`,
+  },
+  ROLES: {
+    GET_ALL: "/roles",
+    GET_BY_ID: (id) => `/roles/${id}`,
+    CREATE: "/roles",
+    UPDATE: (id) => `/roles/${id}`,
+    DELETE: (id) => `/roles/${id}`,
+  },
+  LOCATIONS: {
+    GET_ALL: "/locations",
+    GET_BY_ID: (id) => `/locations/${id}`,
+    CREATE: "/locations",
+    UPDATE: (id) => `/locations/${id}`,
+    DELETE: (id) => `/locations/${id}`,
+  },
+  DEPARTMENTS: {
+    GET_ALL: "/departments",
+    GET_BY_ID: (id) => `/departments/${id}`,
+    CREATE: "/departments",
+    UPDATE: (id) => `/departments/${id}`,
+    DELETE: (id) => `/departments/${id}`,
+  },
+  SHIFTS: {
+    GET_ALL: "/shifts",
+    GET_BY_ID: (id) => `/shifts/${id}`,
+    CREATE: "/shifts",
+    UPDATE: (id) => `/shifts/${id}`,
+    DELETE: (id) => `/shifts/${id}`,
+  },
+  VENDOR_CATERINGS: {
+    GET_ALL: "/vendor-caterings",
+    GET_BY_ID: (id) => `/vendor-caterings/${id}`,
+    CREATE: "/vendor-caterings",
+    UPDATE: (id) => `/vendor-caterings/${id}`,
+    DELETE: (id) => `/vendor-caterings/${id}`,
+  },
+  MEAL_TRAYS: {
+    GET_ALL: "/meal-trays",
+    CREATE: "/meal-trays",
+    UPDATE: (id) => `/meal-trays/${id}`,
+    DELETE: (id) => `/meal-trays/${id}`,
+  },
+  MEAL_MENUS: {
+    GET_ALL: "/meal-menus",
+    GET_BY_ID: (id) => `/meal-menus/${id}`,
+    CREATE: "/meal-menus",
+    UPDATE: (id) => `/meal-menus/${id}`,
+    DELETE: (id) => `/meal-menus/${id}`,
+    UPDATE_STATUS: (id) => `/meal-menus/${id}/status`,
+  },
+  QR_CODES: {
+    GET_ALL: "/qr-codes",
+    GET_BY_ID: (id) => `/qr-codes/${id}`,
+    CREATE: "/qr-codes",
+    UPDATE: (id) => `/qr-codes/${id}`,
+    DELETE: (id) => `/qr-codes/${id}`,
+    GET_ME: "/qr-codes/me",
+  },
+  ORDERS: {
+    GET_ALL: "/orders",
+    GET_BY_ID: (id) => `/orders/${id}`,
+    DELETE: (id) => `/orders/${id}`,
+    CREATE: "/orders",
+    UPDATE: (id) => `/orders/${id}`,
+    APPROVE: (id) => `/orders/${id}/approve`,
+    BULK_APPROVE: "/orders/bulk-approve",
+  },
+  ORDER_DETAILS: {
+    GET_ALL: "/order-details",
+    GET_BY_ID: (id) => `/order-details/${id}`,
+    CREATE: "/order-details",
+    UPDATE: (id) => `/order-details/${id}`,
+    DELETE: (id) => `/order-details/${id}`,
+  },
+};

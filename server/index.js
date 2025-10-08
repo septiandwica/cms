@@ -6,8 +6,6 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const passport = require("passport");
-const { csrfProtection, requireCsrfOnUnsafeMethods } = require("./middleware/csrfMiddleware.js");
-const { issueCsrfToken } = require("./controller/securityController.js");
 
 const { sequelize } = require("./config/db");
 require("./config/passport")(passport);
@@ -39,6 +37,8 @@ app.use(
         CLIENT_URL,
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://localhost:5174",
+
         "http://127.0.0.1:5173",
       ].filter(Boolean);
       if (!origin || whitelist.includes(origin)) return cb(null, true);
@@ -58,30 +58,45 @@ app.use(cookieParser());
 // Passport
 app.use(passport.initialize());
 
-// ===== CSRF INTEGRATION =====
 
-
-// Endpoint untuk mengeluarkan token CSRF (FE panggil ini sebelum melakukan POST/PUT/PATCH/DELETE)
-app.get("/csrf-token", csrfProtection, issueCsrfToken);
-
-
-// --- Rute yang tidak perlu CSRF protection ---
 app.use("/auth", require("./routes/authRouter.js"));
 
-app.use(requireCsrfOnUnsafeMethods);
+app.use("/users", require("./routes/userRouter.js"));
+app.use("/roles", require("./routes/roleRouter.js"));
+app.use("/locations", require("./routes/locationRouter.js"));
+app.use("/departments", require("./routes/departmentRouter.js"));
+app.use("/meal-trays", require("./routes/mealTrayRouter.js"));
+app.use("/shifts", require("./routes/shiftRouter.js"));
+app.use("/vendor-caterings", require("./routes/vendorCatering.js"));
+app.use("/meal-menus", require("./routes/mealMenuRouter.js"));
+app.use("/qr-codes", require("./routes/qrCodeRouter.js"));
+app.use("/orders", require("./routes/orderRouter.js"));
+app.use("/order-details", require("./routes/orderDetailsRouter.js"));
 
 // Routes
 app.get("/", (_req, res) => {
   res.send("Hello World!");
 });
 
-app.use("/users", require("./routes/userRouter.js"));
-app.use("/roles", require("./routes/roleRouter.js"));
-app.use("/locations", require("./routes/locationRouter.js"));
-app.use("/departments", require("./routes/departmentRouter.js"));
-app.use("/shifts", require("./routes/shiftRouter.js"));
-app.use("/meal-menus", require("./routes/mealMenuRouter.js"));
+app.get('/docs', (req, res) => {
+  // QR Code data base64 dari response API atau database
+  const qrCodeBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHQAAAB0CAYAAABUmhYnAAAAAklEQVR4AewaftIAAAKdSURBVO3BQY7YSAwEwSxC//9yro88NSBIGo+5jIh/sMYo1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijXKxUNJ+EkqdyThROUkCT9J5YlijVKsUYo1ysXLVN6UhCdUuiR0SehUTlTelIQ3FWuUYo1SrFEuPpaEO1TuSEKncqLSJeGJJNyh8qVijVKsUYo1ysUwSehUTlQmKdYoxRqlWKNcDKPSJeEOlX9ZsUYp1ijFGuXiYyq/iUqXhCdUfpNijVKsUYo1ysXLkjBZEn6zYo1SrFGKNcrFQyq/SRI6lS4Jd6j8S4o1SrFGKdYoFw8loVPpkvAmlU7lDpUuCSdJeJPKl4o1SrFGKdYoFy9LwolKl4RO5YkknKicJOEOlZMkdEk4UXmiWKMUa5RijXLxkModSehUuiScqDyRhE7lJAmdykkSOpUuCZ3Km4o1SrFGKdYoFx9Lwh0qJ0k4UflSEu5Iwk8q1ijFGqVYo1z8ZUnoVLokdCpdEu5IQqfSJeFE5YkkfKlYoxRrlGKNEv/gH5aEE5UuCScqXRK+pPKmYo1SrFGKNcrFQ0n4SSqdSpeEE5UuCV0SOpU7kvA3FWuUYo1SrFEuXqbypiScJKFTOUnCE0l4QuVLxRqlWKMUa5SLjyXhDpUvqXRJuEPlJAmdSpeETuVNxRqlWKMUa5SL4ZLQqZyodEnoVLokdCpdEjqVLxVrlGKNUqxRLv5nktCpnKh0SehUTlR+UrFGKdYoxRrl4mMqX1LpknCi8pOS0Kl8qVijFGuUYo1y8bIk/KQkdCpdErokdCpfUumS0Km8qVijFGuUYo0S/2CNUaxRijVKsUYp1ijFGqVYoxRrlGKNUqxRijVKsUYp1ijFGqVYoxRrlP8AQnPw+d26P5wAAAAASUVORK5CYII=";  // Contoh base64 string QR Code
 
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>QR Code Display</title>
+    </head>
+    <body>
+      <h1>Here is Your QR Code</h1>
+      <img src="${qrCodeBase64}" alt="QR Code" />
+    </body>
+    </html>
+  `);
+});
 // CSRF error handler
 app.use((err, req, res, next) => {
   if (err.code === "EBADCSRFTOKEN") {

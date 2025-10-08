@@ -1,9 +1,46 @@
-const { Location } = require("../models");
+const { Location, sequelize } = require("../models");
+const { Op } = require("sequelize");
 
+// helper: pilih operator LIKE sesuai dialek DB
+const LIKE = () => (sequelize.getDialect() === "postgres" ? Op.iLike : Op.like);
+
+// ------- LIST -------
+/**
+ * GET /locations
+ * Query yang didukung:
+ *   ?q=pulogadung           -> cari di name (LIKE)
+ *   &page=1&limit=25        -> pagination
+ */
 async function listLocation(req, res, next) {
   try {
-    const locations = await Location.findAll({ order: [["createdAt", "DESC"]] });
-    res.json({ locations });
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+    const offset = (page - 1) * limit;
+
+    const where = {};
+
+    // search by name
+    const q = (req.query.q || "").trim();
+    if (q) where.name = { [LIKE()]: `%${q}%` };
+
+    // Pagination and Filtering
+    const { rows, count } = await Location.findAndCountAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset,
+    });
+
+    const items = rows.map((r) => r.get({ plain: true }));
+
+    // Respond with paginated result
+    return res.json({
+      page,
+      limit,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / limit),
+      locations: items,
+    });
   } catch (err) {
     next(err);
   }

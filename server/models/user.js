@@ -17,6 +17,21 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "department_id",
         as: "department",
       });
+       User.hasOne(models.QR_Code, {
+        foreignKey: 'user_id',
+        as: 'qr_code',
+      });
+      User.hasOne(models.Vendor_Catering, {
+        foreignKey: "user_id",
+        as: "vendor_catering",
+      });
+      User.hasMany(models.Order, {
+        foreignKey: 'user_id',
+        as: 'orders',
+      });
+      User.hasMany(models.ScanHistory, { foreignKey: 'user_id', as: 'scan_histories' });
+      User.hasMany(models.Complaint, { foreignKey: 'user_id', as: 'complaints' });
+      User.hasMany(models.Review, { foreignKey: 'user_id', as: 'reviews' });
     }
   }
   User.init(

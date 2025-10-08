@@ -102,15 +102,20 @@ const createUser = async (req, res, next) => {
       return res.status(400).json({ message: "Password must be at least 8 characters" });
     }
 
-    // Normalisasi
     name = String(name).trim();
     email = String(email).trim().toLowerCase();
 
+    let roleName = null;
     if (role_id) {
       const role = await Role.findByPk(role_id);
       if (!role) return res.status(400).json({ message: "Invalid role_id" });
+      roleName = role.name;
     }
-    if (department_id) {
+
+    // Jika role vendor_catering, department_id otomatis null
+    if (roleName === "vendor_catering") {
+      department_id = null;
+    } else if (department_id) {
       const dept = await Department.findByPk(department_id);
       if (!dept) return res.status(400).json({ message: "Invalid department_id" });
     }
@@ -149,24 +154,35 @@ const createUser = async (req, res, next) => {
 };
 
 /** PUT /users/:id */
+/** PUT /users/:id */
 const updateUser = async (req, res, next) => {
   try {
-    const { name, email, phone, status, role_id, department_id } = req.body;
+    const { nik, name, email, phone, status, role_id, department_id } = req.body;
 
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    let roleName = null;
     if (role_id !== undefined) {
       const role = await Role.findByPk(role_id);
       if (!role) return res.status(400).json({ message: "Invalid role_id" });
       user.role_id = role_id;
+      roleName = role.name;
+    } else if (user.role_id) {
+      const role = await Role.findByPk(user.role_id);
+      roleName = role?.name;
     }
-    if (department_id !== undefined) {
+
+    // Jika role vendor_catering → department_id otomatis null
+    if (roleName === "vendor_catering") {
+      user.department_id = null;
+    } else if (department_id !== undefined) {
       const dept = await Department.findByPk(department_id);
       if (!dept) return res.status(400).json({ message: "Invalid department_id" });
       user.department_id = department_id;
     }
 
+    if (nik !== undefined)   user.nik   = String(nik).trim();
     if (name !== undefined)  user.name  = String(name).trim();
     if (email !== undefined) user.email = String(email).trim().toLowerCase();
     if (phone !== undefined) user.phone = phone;
@@ -193,6 +209,7 @@ const updateUser = async (req, res, next) => {
     return next(err);
   }
 };
+
 
 /** DELETE /users/:id */
 const deleteUser = async (req, res, next) => {

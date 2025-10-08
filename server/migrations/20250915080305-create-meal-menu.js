@@ -17,18 +17,38 @@ module.exports = {
         },
         allowNull: false,
       },
+      meal_tray_id: {
+        type: Sequelize.INTEGER,
+        references: {
+          model: "Meal_Trays",
+          key: "id",
+        },
+        allowNull: false,
+      },
       name: {
         type: Sequelize.STRING,
+        allowNull: false,
+      },
+      descriptions: {
+        type: Sequelize.TEXT,
+        allowNull: false,
       },
       nutrition_facts: {
         type: Sequelize.TEXT,
+        allowNull: true,
       },
       for_date: {
         type: Sequelize.DATEONLY,
+        allowNull: false,
       },
       status: {
-        type: Sequelize.ENUM("approved", "rejected", "pending"),
+        type: Sequelize.ENUM("approved", "rejected", "pending", "resubmit"),
         allowNull: false,
+        defaultValue: "pending",
+      },
+      status_notes: {
+        type: Sequelize.STRING,
+        allowNull: true,
       },
       createdAt: {
         allowNull: false,

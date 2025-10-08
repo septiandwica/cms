@@ -11,7 +11,7 @@ const authLimiter = rateLimit({
 // Limiter khusus login 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
-  max: 10, // max 10 percobaan/15m
+  max: 100, // max 10 percobaan/15m
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -21,7 +21,7 @@ const loginLimiter = rateLimit({
 });
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
-  max: 10, // max 10 percobaan/15m
+  max: 100, // max 10 percobaan/15m
   standardHeaders: true,
   legacyHeaders: false,
   message: {
