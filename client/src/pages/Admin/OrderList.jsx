@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import moment from "moment";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 const OrderList = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [firstLoad, setFirstLoad] =useState(true);
   const [error, setError] = useState("");
 
   // pagination
@@ -17,6 +19,9 @@ const OrderList = () => {
 
   // filters
   const [searchQuery, setSearchQuery] = useState("");
+  
+  const [orderStats, setOrderStats] = useState(null);
+const [loadingStats, setLoadingStats] = useState(false);
 
   // modals
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -67,6 +72,35 @@ const OrderList = () => {
     }
   };
 
+  const fetchOrderStats = async () => {
+  try {
+    setLoadingStats(true);
+    const res = await axiosInstance.get(API_PATHS.ORDERS.COUNT_STATS);
+    setOrderStats(res.data);
+  } catch (err) {
+    setError(err?.response?.data?.message || "Failed to fetch order stats");
+  } finally {
+    setLoadingStats(false);
+  }
+};
+
+const handleCreateBackup = async () => {
+  try {
+    if (
+      !window.confirm(
+        "Are you sure you want to create backup orders for users who haven't ordered yet?"
+      )
+    )
+      return;
+
+    const res = await axiosInstance.post(API_PATHS.ORDERS.BACKUP);
+    alert(res.data.message);
+    fetchOrderStats(); // refresh stats
+    fetchOrders(); // refresh orders
+  } catch (err) {
+    setError(err?.response?.data?.message || "Failed to create backup orders");
+  }
+};
   /** Delete Order */
   const handleDelete = async () => {
     try {
@@ -186,6 +220,7 @@ const OrderList = () => {
 
   useEffect(() => {
     fetchOrders();
+    fetchOrderStats();
   }, [currentPage, searchQuery]);
 
   useEffect(() => {
@@ -193,30 +228,84 @@ const OrderList = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+    if (firstLoad && loading) {
+      return (
+        <DashboardLayout activeMenu="Order">
+          <LoadingSpinner message="Loading Order data..." />
+        </DashboardLayout>
+      );
+    }
   return (
     <DashboardLayout activeMenu="Order">
       <div className="font-poppins">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-black font-semibold text-xl">Order Management</h2>
+            <h2 className="text-black font-semibold text-xl">
+              Order Management
+            </h2>
             <p className="text-gray-500 text-sm mt-1">
               Manage user orders • Total: {totalItems}
             </p>
           </div>
+          
           {selectedOrders.length > 0 && (
             <button
               onClick={handleBulkApprove}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               <span>Approve Selected ({selectedOrders.length})</span>
             </button>
           )}
         </div>
 
+        <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
+  {loadingStats ? (
+    <p className="text-gray-500 text-sm">Loading stats...</p>
+  ) : orderStats ? (
+    <>
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800">
+          Weekly Order Summary ({orderStats.week})
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Total Employees:{" "}
+          <span className="font-medium">{orderStats.totalEmployees}</span> •
+          Ordered:{" "}
+          <span className="text-green-600 font-medium">
+            {orderStats.totalOrdered}
+          </span>{" "}
+          • Not Ordered:{" "}
+          <span className="text-red-600 font-medium">
+            {orderStats.totalNotOrdered}
+          </span>
+        </p>
+      </div>
+
+      <button
+        onClick={handleCreateBackup}
+        className="mt-4 md:mt-0 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Create Backup Orders
+      </button>
+    </>
+  ) : (
+    <p className="text-gray-500 text-sm">No stats available.</p>
+  )}
+</div>
         {/* Filters */}
         <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6">
           <div className="relative">
@@ -242,7 +331,10 @@ const OrderList = () => {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError("")} className="text-red-500 hover:text-red-700">
+            <button
+              onClick={() => setError("")}
+              className="text-red-500 hover:text-red-700"
+            >
               ✕
             </button>
           </div>
@@ -257,7 +349,10 @@ const OrderList = () => {
                   <th className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={orders.length > 0 && selectedOrders.length === orders.length}
+                      checked={
+                        orders.length > 0 &&
+                        selectedOrders.length === orders.length
+                      }
                       onChange={toggleSelectAll}
                       className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
@@ -288,7 +383,10 @@ const OrderList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                    <td
+                      colSpan="8"
+                      className="px-6 py-8 text-center text-gray-500"
+                    >
                       <div className="flex items-center justify-center space-x-2">
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                         <span>Loading orders...</span>
@@ -299,8 +397,18 @@ const OrderList = () => {
                   <tr>
                     <td colSpan="8" className="px-6 py-8 text-center">
                       <div className="text-gray-400">
-                        <svg className="mx-auto h-12 w-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        <svg
+                          className="mx-auto h-12 w-12 mb-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                          />
                         </svg>
                         <p className="text-gray-500">No orders found</p>
                         {searchQuery && (
@@ -313,7 +421,10 @@ const OrderList = () => {
                   </tr>
                 ) : (
                   orders.map((o) => (
-                    <tr key={o.id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={o.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-6 py-4">
                         <input
                           type="checkbox"
@@ -336,20 +447,30 @@ const OrderList = () => {
                             </span>
                           </div>
                           <div className="ml-3">
-                            <p className="text-gray-900 font-medium">{o.user?.name || "-"}</p>
+                            <p className="text-gray-900 font-medium">
+                              {o.user?.name || "-"}
+                            </p>
                             {o.user?.email && (
-                              <p className="text-gray-500 text-xs">{o.user.email}</p>
+                              <p className="text-gray-500 text-xs">
+                                {o.user.email}
+                              </p>
                             )}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(o.status)}`}>
+                        <span
+                          className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                            o.status
+                          )}`}
+                        >
                           {o.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        <span className="font-medium">{o.order_details?.length || 0}</span>
+                        <span className="font-medium">
+                          {o.order_details?.length || 0}
+                        </span>
                         <span className="text-gray-400"> items</span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
@@ -406,9 +527,15 @@ const OrderList = () => {
         {totalPages > 1 && (
           <div className="flex justify-between items-center mt-6">
             <div className="text-sm text-gray-500">
-              Showing <span className="font-medium">{(currentPage - 1) * limit + 1}</span> to{" "}
-              <span className="font-medium">{Math.min(currentPage * limit, totalItems)}</span> of{" "}
-              <span className="font-medium">{totalItems}</span> orders
+              Showing{" "}
+              <span className="font-medium">
+                {(currentPage - 1) * limit + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-medium">
+                {Math.min(currentPage * limit, totalItems)}
+              </span>{" "}
+              of <span className="font-medium">{totalItems}</span> orders
             </div>
             <div className="flex space-x-2">
               <button
@@ -424,7 +551,9 @@ const OrderList = () => {
                 </span>
               </div>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(p + 1, totalPages))
+                }
                 disabled={currentPage === totalPages}
                 className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
               >
@@ -440,8 +569,12 @@ const OrderList = () => {
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-white border-b p-6 flex justify-between items-center">
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Order Details</h3>
-                  <p className="text-sm text-gray-500 mt-1">Order #{selectedItem?.id}</p>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Order Details
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Order #{selectedItem?.id}
+                  </p>
                 </div>
                 <button
                   onClick={closeDetailModal}
@@ -455,42 +588,71 @@ const OrderList = () => {
                 {loadingDetail ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <span className="ml-3 text-gray-500">Loading details...</span>
+                    <span className="ml-3 text-gray-500">
+                      Loading details...
+                    </span>
                   </div>
                 ) : orderDetails ? (
                   <>
                     {/* Order Info */}
                     <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Order Date</p>
-                        <p className="font-medium">{moment(orderDetails.order_date).format("DD MMMM YYYY")}</p>
+                        <p className="text-xs text-gray-500 uppercase">
+                          Order Date
+                        </p>
+                        <p className="font-medium">
+                          {moment(orderDetails.order_date).format(
+                            "DD MMMM YYYY"
+                          )}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Status</p>
-                        <span className={`inline-block px-3 py-1 text-xs font-medium rounded-full mt-1 ${getStatusColor(orderDetails.status)}`}>
+                        <p className="text-xs text-gray-500 uppercase">
+                          Status
+                        </p>
+                        <span
+                          className={`inline-block px-3 py-1 text-xs font-medium rounded-full mt-1 ${getStatusColor(
+                            orderDetails.status
+                          )}`}
+                        >
                           {orderDetails.status}
                         </span>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 uppercase">User</p>
-                        <p className="font-medium">{orderDetails.user?.name || "-"}</p>
+                        <p className="font-medium">
+                          {orderDetails.user?.name || "-"}
+                        </p>
                         {orderDetails.user?.email && (
-                          <p className="text-sm text-gray-500">{orderDetails.user.email}</p>
+                          <p className="text-sm text-gray-500">
+                            {orderDetails.user.email}
+                          </p>
                         )}
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Created</p>
-                        <p className="font-medium">{moment(orderDetails.createdAt).format("DD MMM YYYY HH:mm")}</p>
+                        <p className="text-xs text-gray-500 uppercase">
+                          Created
+                        </p>
+                        <p className="font-medium">
+                          {moment(orderDetails.createdAt).format(
+                            "DD MMM YYYY HH:mm"
+                          )}
+                        </p>
                       </div>
                     </div>
 
                     {/* Order Details */}
                     <div>
-                      <h4 className="font-semibold text-gray-900 mb-3">Meal Schedule (Next Week)</h4>
+                      <h4 className="font-semibold text-gray-900 mb-3">
+                        Meal Schedule (Next Week)
+                      </h4>
                       <div className="space-y-3">
                         {orderDetails.order_details?.length > 0 ? (
                           orderDetails.order_details.map((detail, idx) => (
-                            <div key={idx} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div
+                              key={idx}
+                              className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                            >
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                   <p className="font-medium text-gray-900">
@@ -498,10 +660,16 @@ const OrderList = () => {
                                   </p>
                                   <div className="mt-2 space-y-1">
                                     <p className="text-sm text-gray-600">
-                                      <span className="font-medium">Shift:</span> {detail.shift_id || "-"}
+                                      <span className="font-medium">
+                                        Shift:
+                                      </span>{" "}
+                                      {detail.shift_id || "-"}
                                     </p>
                                     <p className="text-sm text-gray-600">
-                                      <span className="font-medium">Menu:</span> {detail.meal_menu?.name || detail.meal_menu_id || "-"}
+                                      <span className="font-medium">Menu:</span>{" "}
+                                      {detail.meal_menu?.name ||
+                                        detail.meal_menu_id ||
+                                        "-"}
                                     </p>
                                   </div>
                                 </div>
@@ -512,13 +680,17 @@ const OrderList = () => {
                             </div>
                           ))
                         ) : (
-                          <p className="text-gray-500 text-center py-4">No meal details available</p>
+                          <p className="text-gray-500 text-center py-4">
+                            No meal details available
+                          </p>
                         )}
                       </div>
                     </div>
                   </>
                 ) : (
-                  <p className="text-gray-500 text-center py-8">No details available</p>
+                  <p className="text-gray-500 text-center py-8">
+                    No details available
+                  </p>
                 )}
               </div>
 
@@ -540,16 +712,33 @@ const OrderList = () => {
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <svg
+                    className="h-6 w-6 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Order</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Delete Order
+                </h3>
                 <p className="text-sm text-gray-600 mb-6">
                   Are you sure you want to delete order{" "}
-                  <span className="font-medium text-gray-900">#{selectedItem?.id}</span>?
+                  <span className="font-medium text-gray-900">
+                    #{selectedItem?.id}
+                  </span>
+                  ?
                   <br />
-                  <span className="text-red-600">This action cannot be undone.</span>
+                  <span className="text-red-600">
+                    This action cannot be undone.
+                  </span>
                 </p>
                 <div className="flex space-x-3">
                   <button
@@ -576,14 +765,29 @@ const OrderList = () => {
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
               <div className="text-center">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                  <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="h-6 w-6 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Approve Order</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Approve Order
+                </h3>
                 <p className="text-sm text-gray-600 mb-6">
                   Are you sure you want to approve order{" "}
-                  <span className="font-medium text-gray-900">#{selectedItem?.id}</span>?
+                  <span className="font-medium text-gray-900">
+                    #{selectedItem?.id}
+                  </span>
+                  ?
                 </p>
                 <div className="flex space-x-3">
                   <button
@@ -609,10 +813,14 @@ const OrderList = () => {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Update Order Status</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Update Order Status
+                </h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Update status for order{" "}
-                  <span className="font-medium text-gray-900">#{selectedItem?.id}</span>
+                  <span className="font-medium text-gray-900">
+                    #{selectedItem?.id}
+                  </span>
                 </p>
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">

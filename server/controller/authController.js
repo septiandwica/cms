@@ -1,4 +1,4 @@
-const { User, Role, Department } = require("../models");
+const { User, Role, Department, Location } = require("../models");
 const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
 const { ROLES } = require("../middleware/roleMiddleware");
@@ -65,20 +65,27 @@ const loginUser = async (req, res) => {
     return res.status(400).json({ message: "Email and password are required" });
 
   try {
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       where: { email },
       include: [
         {
           model: Role,
-          as: 'role',
-          attributes: ['id', 'name']
+          as: "role",
+          attributes: ["id", "name"],
         },
         {
-          model: Department, // pastikan model ini sudah di-import
-          as: 'department',
-          attributes: ['id', 'name'] 
-        }
-      ]
+          model: Department,
+          as: "department",
+          attributes: ["id", "name", "location_id"],
+          include: [
+            {
+              model: Location,
+              as: "location",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+      ],
     });
 
     if (!user)
@@ -93,20 +100,18 @@ const loginUser = async (req, res) => {
 
     const safeUser = user.get({ plain: true });
     delete safeUser.password;
-    safeUser.role = user.role;
-    safeUser.department = user.department; // tambahkan department
 
     return res.json({
       message: "Login successful",
-      token,            
-      user: safeUser
+      token,
+      user: safeUser,
     });
-
   } catch (err) {
     console.error("[loginUser]", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 

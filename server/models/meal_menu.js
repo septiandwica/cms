@@ -30,7 +30,7 @@ module.exports = (sequelize, DataTypes) => {
       nutrition_facts: { type: DataTypes.TEXT, allowNull: true },
       for_date: { type: DataTypes.DATEONLY, allowNull: false },
       status: {
-        type: DataTypes.ENUM("approved", "rejected", "pending"),
+        type: DataTypes.ENUM("approved", "revisi", "pending"),
         allowNull: false,
         defaultValue: "pending",
       },

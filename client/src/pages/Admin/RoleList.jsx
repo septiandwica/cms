@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import moment from "moment";
+import DataTable from "../../components/common/DataTable";
+import ActionButtons from "../../components/common/ActionsButton";
+import Pagination from "../../components/common/Pagination";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 const RoleList = () => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [firstLoad, setFirstLoad] = useState(true);
   const [error, setError] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRoles, setTotalRoles] = useState(0);
-  const [limit] = useState(10);
+const [limit, setLimit] = useState(15);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,7 +72,10 @@ const RoleList = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      await axiosInstance.put(API_PATHS.ROLES.UPDATE(selectedRole.id), formData);
+      await axiosInstance.put(
+        API_PATHS.ROLES.UPDATE(selectedRole.id),
+        formData
+      );
       setShowEditModal(false);
       setSelectedRole(null);
       fetchRoles();
@@ -103,12 +111,20 @@ const RoleList = () => {
   // Effects
   useEffect(() => {
     fetchRoles();
-  }, [currentPage, searchQuery]);
+  }, [currentPage, limit, searchQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => setCurrentPage(1), 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  if (firstLoad && loading) {
+      return (
+        <DashboardLayout activeMenu="Role">
+          <LoadingSpinner text="Loading Role data..." />
+        </DashboardLayout>
+      );
+    }
 
   return (
     <DashboardLayout activeMenu="Role">
@@ -116,7 +132,9 @@ const RoleList = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-black font-semibold text-xl">Role Management</h2>
+            <h2 className="text-black font-semibold text-xl">
+              Role Management
+            </h2>
             <p className="text-gray-500 text-sm mt-1">Manage system roles</p>
           </div>
           <button
@@ -153,93 +171,52 @@ const RoleList = () => {
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Created At
-                  </th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                  <th className="px-6 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
-                      Loading...
-                    </td>
-                  </tr>
-                ) : roles.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
-                      No roles found
-                    </td>
-                  </tr>
-                ) : (
-                  roles.map((role) => (
-                    <tr key={role.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {role.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {moment(role.createdAt).format("DD MMM YYYY")}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex space-x-2">
-                    <button
-                          onClick={() => openEditModal(role)}
-                          className="text-primary-600 hover:text-primary-900 mr-2"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(role)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                  </div>
-                        
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <DataTable
+  loading={loading}
+  data={roles}
+  emptyMessage="No roles found"
+  columns={[
+    {
+      label: "Name",
+      key: "name",
+      render: (r) => (
+        <span className="text-sm font-medium text-gray-900">{r.name}</span>
+      ),
+    },
+    {
+      label: "Created At",
+      key: "createdAt",
+      render: (r) =>
+        r.createdAt ? moment(r.createdAt).format("DD MMM YYYY") : "-",
+    },
+    {
+  label: "Actions",
+  key: "actions",
+  render: (r) => (
+    <ActionButtons
+      onEdit={() => openEditModal(r)}
+      onDelete={() => openDeleteModal(r)}
+    />
+  ),
+},
+  ]}
+/>
           </div>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6">
-            <div className="text-sm text-gray-500">
-              Showing {(currentPage - 1) * limit + 1} to{" "}
-              {Math.min(currentPage * limit, totalRoles)} of {totalRoles}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+       <Pagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  totalItems={totalRoles}
+  limit={limit}
+  onPageChange={setCurrentPage}
+  onLimitChange={(val) => {
+    setLimit(val);
+    setCurrentPage(1);
+  }}
+/>
+
 
         {/* ===== Modals ===== */}
 
@@ -302,7 +279,9 @@ const ModalForm = ({ title, formData, setFormData, onClose, onSubmit }) => (
       <h3 className="text-lg font-semibold mb-4">{title}</h3>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Name</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Name
+          </label>
           <input
             type="text"
             value={formData.name}

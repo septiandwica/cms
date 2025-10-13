@@ -1,19 +1,25 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import moment from "moment";
+import DataTable from "../../components/common/DataTable";
+import ActionButtons from "../../components/common/ActionsButton";
+import Pagination from "../../components/common/Pagination";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 const ShiftList = () => {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
+      const [firstLoad, setFirstLoad] = useState(true); 
+  
   const [error, setError] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalShifts, setTotalShifts] = useState(0);
-  const [limit] = useState(10);
+const [limit, setLimit] = useState(15);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -115,21 +121,30 @@ const ShiftList = () => {
 
   // Effects
   useEffect(() => {
-    fetchShifts();
-  }, [currentPage, searchQuery]);
+  fetchShifts();
+}, [currentPage, limit, searchQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => setCurrentPage(1), 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+   if (firstLoad && loading) {
+      return (
+        <DashboardLayout activeMenu="Shift">
+          <LoadingSpinner message="Loading Shift data..." />
+        </DashboardLayout>
+      );
+    }
   return (
     <DashboardLayout activeMenu="Shift">
       <div className="font-poppins">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-black font-semibold text-xl">Shift Management</h2>
+            <h2 className="text-black font-semibold text-xl">
+              Shift Management
+            </h2>
             <p className="text-gray-500 text-sm mt-1">Manage shifts</p>
           </div>
           <button
@@ -166,104 +181,72 @@ const ShiftList = () => {
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Time On
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Start At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    End At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Created At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                      Loading...
-                    </td>
-                  </tr>
-                ) : shifts.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                      No shifts found
-                    </td>
-                  </tr>
-                ) : (
-                  shifts.map((shift) => (
-                    <tr key={shift.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {shift.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{shift.timeOn || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{shift.startAt || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{shift.endAt || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {moment(shift.createdAt).format("DD MMM YYYY")}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex space-x-2">
-                <button
-                          onClick={() => openEditModal(shift)}
-                          className="text-primary-600 hover:text-primary-900 mr-2"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(shift)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-            </div>
-                        
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <DataTable
+  loading={loading}
+  data={shifts}
+  emptyMessage="No shifts found"
+  columns={[
+    {
+      label: "Name",
+      key: "name",
+      render: (shift) => (
+        <span className="text-sm font-medium text-gray-900">{shift.name}</span>
+      ),
+    },
+    {
+      label: "Time On",
+      key: "timeOn",
+      render: (shift) => (
+        <span className="text-sm text-gray-700">{shift.timeOn || "-"}</span>
+      ),
+    },
+    {
+      label: "Start At",
+      key: "startAt",
+      render: (shift) => (
+        <span className="text-sm text-gray-700">{shift.startAt || "-"}</span>
+      ),
+    },
+    {
+      label: "End At",
+      key: "endAt",
+      render: (shift) => (
+        <span className="text-sm text-gray-700">{shift.endAt || "-"}</span>
+      ),
+    },
+    {
+      label: "Created At",
+      key: "createdAt",
+      render: (shift) =>
+        shift.createdAt ? moment(shift.createdAt).format("DD MMM YYYY") : "-",
+    },
+    {
+  label: "Actions",
+  key: "actions",
+  render: (shift) => (
+    <ActionButtons
+      onEdit={() => openEditModal(shift)}
+      onDelete={() => openDeleteModal(shift)}
+    />
+  ),
+},
+  ]}
+/>
           </div>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6">
-            <div className="text-sm text-gray-500">
-              Showing {(currentPage - 1) * limit + 1} to{" "}
-              {Math.min(currentPage * limit, totalShifts)} of {totalShifts}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+       <Pagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  totalItems={totalShifts}
+  limit={limit}
+  onPageChange={setCurrentPage}
+  onLimitChange={(val) => {
+    setLimit(val);
+    setCurrentPage(1);
+  }}
+/>
 
         {/* ===== Modals ===== */}
 
@@ -326,7 +309,9 @@ const ModalForm = ({ title, formData, setFormData, onClose, onSubmit }) => (
       <h3 className="text-lg font-semibold mb-4">{title}</h3>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Name</label>
+          <label className="block text-sm font-medium text-gray-700">
+            Name
+          </label>
           <input
             type="text"
             value={formData.name}
@@ -337,35 +322,46 @@ const ModalForm = ({ title, formData, setFormData, onClose, onSubmit }) => (
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Time On</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Time On
+            </label>
             <input
               type="time"
               value={formData.timeOn}
-              onChange={(e) => setFormData({ ...formData, timeOn: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, timeOn: e.target.value })
+              }
               className="w-full px-3 py-2 border rounded-lg"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Start At</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Start At
+            </label>
             <input
               type="time"
               value={formData.startAt}
-              onChange={(e) => setFormData({ ...formData, startAt: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, startAt: e.target.value })
+              }
               className="w-full px-3 py-2 border rounded-lg"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">End At</label>
+            <label className="block text-sm font-medium text-gray-700">
+              End At
+            </label>
             <input
               type="time"
               value={formData.endAt}
-              onChange={(e) => setFormData({ ...formData, endAt: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, endAt: e.target.value })
+              }
               className="w-full px-3 py-2 border rounded-lg"
             />
           </div>
         </div>
         <div className="flex justify-end space-x-3">
-            
           <button
             type="button"
             onClick={onClose}

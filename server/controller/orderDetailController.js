@@ -34,6 +34,59 @@ async function listOrderDetails(req, res, next) {
     next(err);
   }
 }
+// =============================
+// 🔒 List Order Details milik user login
+// =============================
+async function listMyOrderDetails(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Ambil semua order milik user login
+    const userOrders = await Order.findAll({
+      where: { user_id: userId },
+      attributes: ["id"], // kita cuma butuh ID order-nya
+    });
+
+    if (!userOrders.length) {
+      return res.status(404).json({ message: "No orders found for this user" });
+    }
+
+    const orderIds = userOrders.map((o) => o.id);
+
+    const orderDetails = await Order_Detail.findAll({
+      where: { order_id: orderIds },
+      include: [
+        { model: Shift, as: "shift" },
+        {
+          model: Meal_Menu,
+          as: "meal_menu",
+          include: ["vendor_catering"],
+        },
+        {
+          model: Order,
+          as: "order",
+          attributes: ["status", "createdAt"],
+        },
+      ],
+      order: [["day", "ASC"]],
+    });
+
+    if (!orderDetails.length) {
+      return res.status(404).json({ message: "No order details found" });
+    }
+
+    res.json({
+      total: orderDetails.length,
+      orderDetails: orderDetails.map((d) => d.get({ plain: true })),
+    });
+  } catch (error) {
+    console.error("🔥 Error fetching my order details:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
 
 // Create Order Detail
 async function createOrderDetail(req, res, next) {
@@ -160,4 +213,5 @@ module.exports = {
   getOrderDetailById,
   updateOrderDetail,
   deleteOrderDetail,
+    listMyOrderDetails,
 };

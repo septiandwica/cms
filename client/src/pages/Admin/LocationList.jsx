@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import moment from "moment";
+import Pagination from "../../components/common/Pagination";
+import ActionButtons from "../../components/common/ActionsButton";
+import DataTable from "../../components/common/DataTable";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 const LocationList = () => {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [firstLoad, setFirstLoad] = useState(true);
   const [error, setError] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLocations, setTotalLocations] = useState(0);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(15);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,7 +43,9 @@ const LocationList = () => {
         limit,
         ...(searchQuery && { q: searchQuery }),
       };
-      const res = await axiosInstance.get(API_PATHS.LOCATIONS.GET_ALL, { params });
+      const res = await axiosInstance.get(API_PATHS.LOCATIONS.GET_ALL, {
+        params,
+      });
       const data = res.data;
 
       setLocations(data.locations);
@@ -84,7 +91,9 @@ const LocationList = () => {
   // Delete
   const handleDelete = async () => {
     try {
-      await axiosInstance.delete(API_PATHS.LOCATIONS.DELETE(selectedLocation.id));
+      await axiosInstance.delete(
+        API_PATHS.LOCATIONS.DELETE(selectedLocation.id)
+      );
       setShowDeleteModal(false);
       setSelectedLocation(null);
       fetchLocations();
@@ -108,20 +117,29 @@ const LocationList = () => {
   // Effects
   useEffect(() => {
     fetchLocations();
-  }, [currentPage, searchQuery]);
+  }, [currentPage, limit, searchQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => setCurrentPage(1), 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  if (firstLoad && loading) {
+      return (
+        <DashboardLayout activeMenu="Location">
+          <LoadingSpinner text="Loading Location data..." />
+        </DashboardLayout>
+      );
+    }
   return (
     <DashboardLayout activeMenu="Location">
       <div className="font-poppins">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-black font-semibold text-xl">Location Management</h2>
+            <h2 className="text-black font-semibold text-xl">
+              Location Management
+            </h2>
             <p className="text-gray-500 text-sm mt-1">Manage locations</p>
           </div>
           <button
@@ -158,92 +176,52 @@ const LocationList = () => {
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Created At
-                  </th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
-                      Loading...
-                    </td>
-                  </tr>
-                ) : locations.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
-                      No locations found
-                    </td>
-                  </tr>
-                ) : (
-                  locations.map((loc) => (
-                    <tr key={loc.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {loc.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {moment(loc.createdAt).format("DD MMM YYYY")}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex  space-x-2">
-<button
-                          onClick={() => openEditModal(loc)}
-                          className="text-primary-600 hover:text-primary-900 mr-2"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(loc)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                        </div>
-                        
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+           <DataTable
+  loading={loading}
+  data={locations}
+  emptyMessage="No locations found"
+  columns={[
+    {
+      label: "Name",
+      key: "name",
+      render: (loc) => (
+        <span className="text-sm font-medium text-gray-900">{loc.name}</span>
+      ),
+    },
+    {
+      label: "Created At",
+      key: "createdAt",
+      render: (loc) =>
+        loc.createdAt ? moment(loc.createdAt).format("DD MMM YYYY") : "-",
+    },
+    {
+  label: "Actions",
+  key: "actions",
+  render: (loc) => (
+    <ActionButtons
+      onEdit={() => openEditModal(loc)}
+      onDelete={() => openDeleteModal(loc)}
+    />
+  ),
+},
+  ]}
+/>
           </div>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6">
-            <div className="text-sm text-gray-500">
-              Showing {(currentPage - 1) * limit + 1} to{" "}
-              {Math.min(currentPage * limit, totalLocations)} of {totalLocations}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+       <Pagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  totalItems={totalLocations}
+  limit={limit}
+  onPageChange={setCurrentPage}
+  onLimitChange={(val) => {
+    setLimit(val);
+    setCurrentPage(1);
+  }}
+/>
+
 
         {/* ===== Modals ===== */}
 

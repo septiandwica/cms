@@ -90,6 +90,106 @@ const getUserById = async (req, res, next) => {
   }
 };
 
+/** GET /users/ga */
+
+
+/** GET /users/department-managed */
+const getUsersByManagedDepartment = async (req, res, next) => {
+  try {
+    const currentUser = req.user;
+    if (!currentUser) return res.status(401).json({ message: "Unauthorized" });
+
+    const userWithRole = await User.findByPk(currentUser.id, {
+      include: [
+        { model: Role, as: "role", attributes: ["id", "name"] },
+        {
+          model: Department,
+          as: "department",
+          attributes: ["id", "name", "location_id"],
+          include: [{ model: Location, as: "location", attributes: ["id", "name"] }],
+        },
+      ],
+    });
+
+    if (!userWithRole || userWithRole.role?.name !== "admin_department") {
+      return res.status(403).json({ message: "Forbidden: not an admin_department" });
+    }
+
+    const adminDeptId = userWithRole.department_id;
+    const adminLocationId = userWithRole.department?.location_id;
+
+    if (!adminDeptId || !adminLocationId) {
+      return res.status(400).json({ message: "Admin department not linked to valid department or location" });
+    }
+
+    // pagination setup
+    const page  = Math.max(parseInt(req.query.page, 10)  || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+    const offset = (page - 1) * limit;
+
+    const LIKE = sequelize.getDialect() === "postgres" ? Op.iLike : Op.like;
+    const { q, status } = req.query;
+
+    const where = {
+      department_id: adminDeptId,
+    };
+
+    // hanya tampilkan user dengan role employee
+    const employeeRole = await Role.findOne({ where: { name: "employee" } });
+    if (employeeRole) where.role_id = employeeRole.id;
+
+    const qTrim = (q || "").trim();
+    if (qTrim) {
+      where[Op.or] = [
+        { name:  { [LIKE]: `%${qTrim}%` } },
+        { email: { [LIKE]: `%${qTrim}%` } },
+      ];
+    }
+
+    if (status) where.status = status;
+
+    const { rows, count } = await User.findAndCountAll({
+      where,
+      attributes: { exclude: ["password"] },
+      include: [
+        { model: Role, as: "role", attributes: ["id", "name"] },
+        {
+          model: Department,
+          as: "department",
+          attributes: ["id", "name", "location_id"],
+          include: [{ model: Location, as: "location", attributes: ["id", "name"] }],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset,
+      distinct: true,
+    });
+
+    // filter berdasarkan lokasi (safety)
+    const users = rows
+      .filter(u => u.department?.location_id === adminLocationId)
+      .map(u => u.get({ plain: true }));
+
+    return res.json({
+      managedBy: userWithRole.name,
+      department: userWithRole.department?.name,
+      location: userWithRole.department?.location?.name,
+      page,
+      limit,
+      total: Number(count),
+      totalPages: Math.ceil(Number(count) / limit),
+      users,
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+
+
+
+
 /** POST /users */
 const createUser = async (req, res, next) => {
   try {
@@ -231,4 +331,5 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  getUsersByManagedDepartment,
 };

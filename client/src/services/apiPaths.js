@@ -7,6 +7,7 @@ export const API_PATHS = {
     LOGOUT: "/auth/logout",
     REGISTER: "/auth/register",
     CHANGE_PASSWORD: "/auth/change-password",
+    SELF_CHANGE_PASSWORD: (id) => `/auth/${id}/password`,
   },
   USERS: {
     GET_ALL: "/users",
@@ -15,6 +16,8 @@ export const API_PATHS = {
     CREATE: "/users",
     UPDATE: (id) => `/users/${id}`,
     DELETE: (id) => `/users/${id}`,
+    GET_MANAGED: "/users/department-managed",
+    GET_GA_MANAGED: "/users/ga-managed",
   },
   ROLES: {
     GET_ALL: "/roles",
@@ -60,10 +63,15 @@ export const API_PATHS = {
   MEAL_MENUS: {
     GET_ALL: "/meal-menus",
     GET_BY_ID: (id) => `/meal-menus/${id}`,
+    GET_NEXT_WEEK: `/meal-menus/next-week`,
     CREATE: "/meal-menus",
     UPDATE: (id) => `/meal-menus/${id}`,
     DELETE: (id) => `/meal-menus/${id}`,
-    UPDATE_STATUS: (id) => `/meal-menus/${id}/status`,
+     BULK_UPLOAD: "/meal-menus/bulk", 
+    UPDATE_STATUS: (id) => `/meal-menus/${id}/status`, 
+    BULK_UPDATE_STATUS: "/meal-menus/bulk-update-status",
+    VALIDATE: "/meal-menus/validate",
+
   },
   QR_CODES: {
     GET_ALL: "/qr-codes",
@@ -81,9 +89,14 @@ export const API_PATHS = {
     UPDATE: (id) => `/orders/${id}`,
     APPROVE: (id) => `/orders/${id}/approve`,
     BULK_APPROVE: "/orders/bulk-approve",
+    CHECK_WEEKLY: "/orders/check",
+     MY_ORDERS: "/orders/my",
+       COUNT_STATS: "/orders/stats/count", // 🧩 new
+  BACKUP: "/orders/backup",   
   },
   ORDER_DETAILS: {
     GET_ALL: "/order-details",
+    GET_MY: "/order-details/my",
     GET_BY_ID: (id) => `/order-details/${id}`,
     CREATE: "/order-details",
     UPDATE: (id) => `/order-details/${id}`,

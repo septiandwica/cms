@@ -5,16 +5,16 @@ const roleController = require("../controller/roleController");
 
 const router = express.Router();
 
-router.use(isLoggedIn, requireRoles(ROLES.ADMIN));
+router.use(isLoggedIn );
 
-router.get("/", roleController.listRoles);
+router.get("/",requireRoles(ROLES.ADMIN, ROLES.ADMIN_DEPARTMENT, ROLES.GENERAL_AFFAIR), roleController.listRoles);
 
-router.post("/", roleController.createRole);
+router.post("/", requireRoles(ROLES.ADMIN), roleController.createRole);
 
-router.get("/:id", roleController.getRoleById);
+router.get("/:id", requireRoles(ROLES.ADMIN), roleController.getRoleById);
 
-router.put("/:id", roleController.updateRole);
+router.put("/:id", requireRoles(ROLES.ADMIN), roleController.updateRole);
 
-router.delete("/:id", roleController.deleteRole);
+router.delete("/:id", requireRoles(ROLES.ADMIN), roleController.deleteRole);
 
 module.exports = router;

@@ -1,19 +1,26 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import moment from "moment";
 import Select from "react-select";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import DataTable from "../../components/common/DataTable";
+import ActionButtons from "../../components/common/ActionsButton";
+import Pagination from "../../components/common/Pagination";
 
 const VendorCateringList = () => {
   const [vendorCaterings, setVendorCaterings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+      const [firstLoad, setFirstLoad] = useState(true); 
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalVendorCaterings, setTotalVendorCaterings] = useState(0);
-  const [limit] = useState(10);
+const [limit, setLimit] = useState(15);
+
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,6 +107,7 @@ const VendorCateringList = () => {
       setError(err || "Failed to fetch vendor caterings");
     } finally {
       setLoading(false);
+      setFirstLoad(false);
     }
   };
 
@@ -187,6 +195,7 @@ const VendorCateringList = () => {
     selectedStatus,
     selectedLocation,
     selectedShift,
+     limit,
   ]);
 
   useEffect(() => {
@@ -194,6 +203,13 @@ const VendorCateringList = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+    if (firstLoad && loading) {
+      return (
+        <DashboardLayout activeMenu="Vendor Catering">
+          <LoadingSpinner text="Loading vendor catering data..." />
+        </DashboardLayout>
+      );
+    }
   return (
     <DashboardLayout activeMenu="Vendor Catering">
       <div className="font-poppins">
@@ -294,100 +310,71 @@ const VendorCateringList = () => {
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Name & Address
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Location & Shift
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Created At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                ) : vendorCaterings.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      No vendor caterings found
-                    </td>
-                  </tr>
-                ) : (
-                  vendorCaterings.map((vc) => (
-                    <tr key={vc.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {vc.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {vc.address}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {vc.user?.name || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {vc.location?.name || "-"} / {vc.shift?.name || "-"}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                            vc.status === "active"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {vc.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {moment(vc.createdAt).format("DD MMM YYYY")}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => openEditModal(vc)}
-                            className="text-primary-600 hover:text-primary-900 mr-2"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => openDeleteModal(vc)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+<DataTable
+  loading={loading}
+  data={vendorCaterings}
+  emptyMessage="No vendor caterings found"
+  columns={[
+    {
+      label: "Name & Address",
+      key: "nameAddress",
+      render: (vc) => (
+        <div>
+          <div className="text-sm font-medium text-gray-900">{vc.name}</div>
+          <div className="text-sm text-gray-500">{vc.address}</div>
+        </div>
+      ),
+    },
+    {
+      label: "User",
+      key: "user",
+      render: (vc) => (
+        <div className="text-sm text-gray-900">{vc.user?.name || "-"}</div>
+      ),
+    },
+    {
+      label: "Location & Shift",
+      key: "locationShift",
+      render: (vc) => (
+        <div className="text-sm text-gray-900">
+          {vc.location?.name || "-"} / {vc.shift?.name || "-"}
+        </div>
+      ),
+    },
+    {
+      label: "Status",
+      key: "status",
+      render: (vc) => (
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+            vc.status === "active"
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
+          }`}
+        >
+          {vc.status}
+        </span>
+      ),
+    },
+    {
+      label: "Created At",
+      key: "createdAt",
+      render: (vc) =>
+        vc.createdAt ? moment(vc.createdAt).format("DD MMM YYYY") : "-",
+    },
+    {
+  label: "Actions",
+  key: "actions",
+  render: (vc) => (
+    <ActionButtons
+      onEdit={() => openEditModal(vc)}
+      onDelete={() => openDeleteModal(vc)}
+    />
+  ),
+},
+  ]}
+/>
+
           </div>
         </div>
         {/* Create Modal */}
@@ -398,7 +385,7 @@ const VendorCateringList = () => {
                 Add Vendor Catering
               </h3>
               <form onSubmit={handleCreate} className="space-y-4">
-               <div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     User
                   </label>
@@ -688,33 +675,17 @@ const VendorCateringList = () => {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6">
-            <div className="text-sm text-gray-500">
-              Showing {(currentPage - 1) * limit + 1} to{" "}
-              {Math.min(currentPage * limit, totalVendorCaterings)} of{" "}
-              {totalVendorCaterings}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(p + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+       <Pagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  totalItems={totalVendorCaterings}
+  limit={limit}
+  onPageChange={setCurrentPage}
+  onLimitChange={(val) => {
+    setCurrentPage(1);
+    setLimit(val);
+  }}
+/>
       </div>
     </DashboardLayout>
   );

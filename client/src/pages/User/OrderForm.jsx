@@ -4,57 +4,80 @@ import moment from "moment";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import { AuthContext } from "../../context/AuthContext";
-import { Loader2, CalendarDays, CheckCircle2 } from "lucide-react";
+import { Loader2, CalendarDays, CheckCircle2, Lock } from "lucide-react";
+import { PageContainer } from "../../components/common/PageContainer";
+import MobileLayout from "../../components/mobile/MobileLayout";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner"; // ✅ import spinner elegan
 
 const OrderForm = () => {
   const navigate = useNavigate();
-  const { token } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
 
   const [shifts, setShifts] = useState([]);
-  const [menusByDate, setMenusByDate] = useState({}); // <── per date
+  const [menusByDate, setMenusByDate] = useState({});
   const [selectedShift, setSelectedShift] = useState("");
   const [selectedMenus, setSelectedMenus] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // ⬅️ default true (tampilkan spinner saat awal)
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [alreadyOrdered, setAlreadyOrdered] = useState(false);
 
-  // 📅 Calculate next week (Mon–Fri)
+  // ✅ Hitung tanggal minggu depan
   const nextMonday = moment().add(1, "weeks").startOf("isoWeek");
+  const nextFriday = moment(nextMonday).add(4, "days");
   const nextWeekDays = Array.from({ length: 5 }, (_, i) =>
     moment(nextMonday).add(i, "days")
   );
 
-  // 🕓 Check order window: Wed–Fri only
   const today = moment();
-  const currentDay = today.isoWeekday(); // 1=Mon ... 7=Sun
-  const canOrder = currentDay >= 3 && currentDay <= 5;
+  const currentDay = today.isoWeekday();
+  const currentTime = today.hour();
+  const canOrder =
+    (currentDay === 4 && currentTime >= 0) ||
+    currentDay === 5 ||
+    (currentDay === 6 && currentTime < 12);
 
-  // 🔹 Fetch shifts
+  // ✅ Ambil data shift
   useEffect(() => {
-    const fetchShifts = async () => {
+    const fetchInitialData = async () => {
       try {
-        const res = await axiosInstance.get(API_PATHS.SHIFTS.GET_ALL, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setShifts(res.data.shifts || res.data || []);
+        const [shiftRes, orderRes] = await Promise.all([
+          axiosInstance.get(API_PATHS.SHIFTS.GET_ALL),
+          axiosInstance.get(API_PATHS.ORDERS.CHECK_WEEKLY, {
+            params: { week_start: nextMonday.format("YYYY-MM-DD") },
+          }),
+        ]);
+
+        setShifts(shiftRes.data.shifts || shiftRes.data || []);
+        const ordered = orderRes.data.alreadyOrdered || false;
+        setAlreadyOrdered(ordered);
+
+        if (ordered) navigate("/recent-order");
       } catch (err) {
-        console.error(err);
+        console.error("Init load error:", err);
+        setError("Gagal memuat data awal.");
+      } finally {
+        setLoading(false);
       }
     };
-    fetchShifts();
-  }, [token]);
 
-  // 🔹 Fetch menus when shift changes
+    if (user) fetchInitialData();
+  }, [user]);
+
+  // ✅ Ambil menu berdasarkan shift
   useEffect(() => {
     if (!selectedShift) return;
-    const fetchMenus = async () => {
-      try {
-        const res = await axiosInstance.get(API_PATHS.MEAL_MENUS.GET_ALL, {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { shift_id: selectedShift },
-        });
 
-        // Dapatkan data array menu
+    const fetchMenus = async () => {
+      setLoading(true);
+      try {
+        const res = await axiosInstance.get(
+          API_PATHS.MEAL_MENUS.GET_NEXT_WEEK,
+          {
+            params: { shift_id: selectedShift },
+          }
+        );
+
         const allMenus =
           res.data.meal_menus ||
           res.data.mealMenus ||
@@ -62,14 +85,13 @@ const OrderForm = () => {
           res.data ||
           [];
 
-        // Filter menu sesuai shift yang dipilih
-        const filteredByShift = allMenus.filter(
+        const filtered = allMenus.filter(
           (m) =>
-            m.vendor_catering?.shift_id === parseInt(selectedShift, 10)
+            m.vendor_catering?.shift?.id === parseInt(selectedShift, 10) &&
+            m.status?.toLowerCase() === "approved"
         );
 
-        // Group by date
-        const grouped = filteredByShift.reduce((acc, menu) => {
+        const grouped = filtered.reduce((acc, menu) => {
           const date = menu.for_date;
           if (!acc[date]) acc[date] = [];
           acc[date].push(menu);
@@ -79,23 +101,23 @@ const OrderForm = () => {
         setMenusByDate(grouped);
       } catch (err) {
         console.error("Error fetching menus:", err);
-        setMenusByDate({});
+        setError("Gagal memuat menu.");
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchMenus();
-  }, [selectedShift, token]);
+  }, [selectedShift]);
 
-  // 🧾 Handle menu selection
-  const handleMenuSelect = (day, menuId) => {
+  const handleMenuSelect = (day, menuId) =>
     setSelectedMenus((prev) => ({ ...prev, [day]: menuId }));
-  };
 
-  // ✅ Submit weekly order
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError("");
     setSuccess("");
-    setLoading(true);
 
     try {
       const orders = nextWeekDays.map((day) => ({
@@ -103,136 +125,175 @@ const OrderForm = () => {
         meal_menu_id: selectedMenus[day.format("YYYY-MM-DD")],
       }));
 
-      const res = await axiosInstance.post(
-        API_PATHS.ORDERS.CREATE,
-        { orders },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axiosInstance.post(API_PATHS.ORDERS.CREATE, { orders });
 
       if (res.status === 201) {
-        setSuccess(res.data.message || "Order created successfully!");
+        setSuccess(res.data.message || "Order berhasil dibuat!");
         setTimeout(() => navigate("/dashboard"), 2000);
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Failed to create order. Please try again."
-      );
+      setError(err.response?.data?.message || "Gagal membuat order.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!canOrder) {
+  // ✅ Saat loading tampilkan spinner di tengah layar
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md">
-          <CalendarDays className="w-10 h-10 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">
-            Ordering Closed
-          </h2>
-          <p className="text-gray-600 text-sm">
-            You can only place orders from <strong>Wednesday to Friday</strong>.
-          </p>
-        </div>
-      </div>
+      <MobileLayout>
+        <LoadingSpinner text="Memuat data pemesanan..." />
+      </MobileLayout>
     );
   }
 
+  // ✅ Layout utama
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-50 font-sans p-6">
-      <div className="bg-white shadow-2xl rounded-3xl p-8 w-full max-w-2xl border-2 border-blue-500">
-        <h1 className="text-2xl font-bold text-center text-blue-600 mb-6">
-          Weekly Order Form
-        </h1>
-
-        {/* Shift Selection */}
-        <div className="mb-6">
-          <label className="block font-semibold text-gray-700 mb-2">
-            Select Shift
-          </label>
-          <select
-            value={selectedShift}
-            onChange={(e) => setSelectedShift(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2"
-          >
-            <option value="">-- Choose Shift --</option>
-            {shifts.map((shift) => (
-              <option key={shift.id} value={shift.id}>
-                {shift.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Menu Selection per Day */}
-        {selectedShift && (
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              {nextWeekDays.map((day) => {
-                const dateStr = day.format("YYYY-MM-DD");
-                const menusForDay = menusByDate[dateStr] || [];
-                return (
-                  <div
-                    key={dateStr}
-                    className="p-4 border rounded-xl bg-gray-50"
-                  >
-                    <h3 className="font-semibold mb-2 text-gray-700">
-                      {day.format("dddd, MMMM D")}
-                    </h3>
-                    <select
-                      value={selectedMenus[dateStr] || ""}
-                      onChange={(e) =>
-                        handleMenuSelect(dateStr, e.target.value)
-                      }
-                      className="w-full border rounded-lg px-3 py-2"
-                      required
-                    >
-                      <option value="">-- Select Menu --</option>
-                      {menusForDay.length > 0 ? (
-                        menusForDay.map((menu) => (
-                          <option key={menu.id} value={menu.id}>
-                            {menu.name} - {menu.descriptions}
-                          </option>
-                        ))
-                      ) : (
-                        <option disabled>No menu available</option>
-                      )}
-                    </select>
-                  </div>
-                );
-              })}
+    <MobileLayout>
+      <PageContainer>
+        <div className="px-4 py-6 space-y-6">
+          {/* Sudah memesan */}
+          {alreadyOrdered ? (
+            <div className="text-center py-16 bg-white rounded-2xl shadow-md">
+              <Lock className="w-12 h-12 mx-auto text-primary-600 mb-4" />
+              <h2 className="text-xl font-bold text-gray-800 mb-2">
+                Kamu sudah memesan 🎉
+              </h2>
+              <p className="text-gray-600">
+                Periode {nextMonday.format("DD MMM")} -{" "}
+                {nextFriday.format("DD MMM")}
+              </p>
             </div>
-
-            {/* Error / Success */}
-            {error && (
-              <div className="bg-red-100 text-red-700 mt-4 p-3 rounded-lg text-center">
-                {error}
+          ) : !canOrder ? (
+            <div className="text-center py-16 bg-white rounded-2xl shadow-md">
+              <CalendarDays className="w-12 h-12 mx-auto text-primary-600 mb-4" />
+              <h2 className="text-xl font-bold text-gray-800 mb-2">
+                Belum Waktunya Order 📅
+              </h2>
+              <p className="text-gray-600">
+                Pemesanan dibuka dari <b>Kamis sampai Sabtu (sebelum jam 12)</b>
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Pilih shift */}
+              <div className="bg-white p-5 rounded-2xl shadow-md">
+                <label className="block font-semibold mb-2">
+                  Pilih Shift Kamu
+                </label>
+                <select
+                  value={selectedShift}
+                  onChange={(e) => setSelectedShift(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3"
+                >
+                  <option value="">-- Pilih Shift --</option>
+                  {shifts.map((shift) => (
+                    <option key={shift.id} value={shift.id}>
+                      {shift.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
-            {success && (
-              <div className="bg-green-100 text-green-700 mt-4 p-3 rounded-lg text-center flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> {success}
-              </div>
-            )}
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-6 bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-all flex justify-center items-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" /> Processing...
-                </>
-              ) : (
-                "Submit Order"
+              {/* Daftar menu */}
+              {selectedShift && (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  {nextWeekDays.map((day) => {
+                    const dateStr = day.format("YYYY-MM-DD");
+                    const menus = menusByDate[dateStr] || [];
+
+                    return (
+                      <div
+                        key={dateStr}
+                        className="bg-white p-5 rounded-2xl shadow-md"
+                      >
+                        <h3 className="font-bold text-lg mb-3">
+                          {day.format("dddd, DD MMM")}
+                        </h3>
+                        {menus.length === 0 ? (
+                          <p className="text-gray-500 text-center py-6">
+                            Tidak ada menu untuk hari ini
+                          </p>
+                        ) : (
+                          menus.map((menu) => {
+                            const selected = selectedMenus[dateStr] === menu.id;
+                            return (
+                              <button
+                                type="button"
+                                key={menu.id}
+                                onClick={() =>
+                                  handleMenuSelect(dateStr, menu.id)
+                                }
+                                className={`w-full text-left p-4 mb-3 rounded-xl border ${
+                                  selected
+                                    ? "border-primary-500 bg-primary-50"
+                                    : "border-gray-200"
+                                }`}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h4 className="font-semibold">
+                                      {menu.name}
+                                    </h4>
+                                    <p className="text-sm text-gray-600">
+                                      {menu.descriptions}
+                                    </p>
+                                  </div>
+                                  {selected && (
+                                    <CheckCircle2 className="w-6 h-6 text-primary-600" />
+                                  )}
+                                </div>
+                                {menu.vendor_catering?.vendor?.name && (
+                                  <p className="text-xs text-gray-500 mt-2">
+                                    👨‍🍳 {menu.vendor_catering.vendor.name}
+                                  </p>
+                                )}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Pesan feedback */}
+                  {error && (
+                    <div className="bg-red-100 text-red-800 p-4 rounded-lg text-center">
+                      ⚠️ {error}
+                    </div>
+                  )}
+                  {success && (
+                    <div className="bg-green-100 text-green-800 p-4 rounded-lg text-center">
+                      ✅ {success}
+                    </div>
+                  )}
+
+                  {/* Tombol kirim */}
+                  <button
+                    type="submit"
+                    disabled={
+                      loading || Object.keys(selectedMenus).length !== 5
+                    }
+                    className="w-full bg-primary-600 text-white py-4 rounded-xl font-semibold disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <span className="flex justify-center items-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin" />{" "}
+                        Memproses...
+                      </span>
+                    ) : (
+                      `Konfirmasi Pesanan (${
+                        Object.keys(selectedMenus).length
+                      }/5)`
+                    )}
+                  </button>
+                </form>
               )}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+            </>
+          )}
+        </div>
+      </PageContainer>
+    </MobileLayout>
   );
 };
 

@@ -1,43 +1,49 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useUserAuth } from "../../hooks/useUserAuth";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import moment from "moment";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import DataTable from "../../components/common/DataTable";
+import ActionButtons from "../../components/common/ActionsButton";
+import Pagination from "../../components/common/Pagination";
 
 const UserList = () => {
   useUserAuth();
   const { user } = useContext(AuthContext);
+
+  // State utama
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+    const [firstLoad, setFirstLoad] = useState(true); 
   const [error, setError] = useState("");
 
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [limit] = useState(10);
+const [currentPage, setCurrentPage] = useState(1);
+const [totalPages, setTotalPages] = useState(1);
+const [totalUsers, setTotalUsers] = useState(0);
+const [limit, setLimit] = useState(15);
 
-  // Filters
+  // Filter
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
 
-  // Filter options - fetch from API
+  // Dropdown data
   const [roles, setRoles] = useState([]);
   const [departments, setDepartments] = useState([]);
-
   const statusOptions = ["active", "inactive", "suspended"];
 
-  // Modal states
+  // Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // Form data
+  // Form
   const [formData, setFormData] = useState({
     nik: "",
     name: "",
@@ -49,7 +55,10 @@ const UserList = () => {
     status: "active",
   });
 
-  // Fetch filter options
+  // Untuk mencegah double submit
+  const [submitting, setSubmitting] = useState(false);
+
+  // ====== FETCH MASTER DATA ======
   const fetchRoles = async () => {
     try {
       const response = await axiosInstance.get(API_PATHS.ROLES.GET_ALL);
@@ -68,7 +77,7 @@ const UserList = () => {
     }
   };
 
-  // Fetch users from API
+  // ====== FETCH USERS ======
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -81,31 +90,35 @@ const UserList = () => {
         ...(selectedStatus && { status: selectedStatus }),
       };
 
-      const response = await axiosInstance.get(API_PATHS.USERS.GET_ALL, {
-        params,
-      });
+      const isAdminDepartment = user?.role?.name === "admin_department";
+      const endpoint = isAdminDepartment
+        ? API_PATHS.USERS.GET_MANAGED
+        : API_PATHS.USERS.GET_ALL;
+
+      const response = await axiosInstance.get(endpoint, { params });
       const data = response.data;
 
-      setUsers(data.users);
-      setTotalPages(data.totalPages);
-      setTotalUsers(data.total);
+      setUsers(data.users || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalUsers(data.total || 0);
       setError("");
     } catch (err) {
-      setError(err || "Failed to fetch users");
+      setError(err?.response?.data?.message || "Failed to fetch users");
     } finally {
       setLoading(false);
+      setFirstLoad(false); 
     }
   };
 
-  // Create user
+  // ====== CRUD HANDLERS ======
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const response = await axiosInstance.post(
         API_PATHS.USERS.CREATE,
         formData
       );
-
       if (response.data) {
         setShowCreateModal(false);
         setFormData({
@@ -114,24 +127,25 @@ const UserList = () => {
           email: "",
           password: "",
           phone: "",
-          role_id: "",
+          role_id: roles.length ? roles[0].id : "",
           department_id: "",
           status: "active",
         });
         fetchUsers();
-        setError("");
       }
     } catch (err) {
-      setError(err || "Failed to create user");
+      setError(err?.response?.data?.message || "Failed to create user");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Update user
   const handleUpdateUser = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       const updateData = { ...formData };
-      delete updateData.password; // Don't send password in update
+      delete updateData.password;
 
       const response = await axiosInstance.put(
         API_PATHS.USERS.UPDATE(selectedUser.id),
@@ -142,28 +156,29 @@ const UserList = () => {
         setShowEditModal(false);
         setSelectedUser(null);
         fetchUsers();
-        setError("");
       }
     } catch (err) {
-      setError(err || "Failed to update user");
+      setError(err?.response?.data?.message || "Failed to update user");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Delete user
   const handleDeleteUser = async () => {
+    setSubmitting(true);
     try {
       await axiosInstance.delete(API_PATHS.USERS.DELETE(selectedUser.id));
-
       setShowDeleteModal(false);
       setSelectedUser(null);
       fetchUsers();
-      setError("");
     } catch (err) {
-      setError(err || "Failed to delete user");
+      setError(err?.response?.data?.message || "Failed to delete user");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Open edit modal
+  // ====== MODAL OPENERS ======
   const openEditModal = (userToEdit) => {
     setSelectedUser(userToEdit);
     setFormData({
@@ -179,38 +194,42 @@ const UserList = () => {
     setShowEditModal(true);
   };
 
-  // Open delete modal
   const openDeleteModal = (userToDelete) => {
     setSelectedUser(userToDelete);
     setShowDeleteModal(true);
   };
 
+  // ====== USE EFFECTS ======
   useEffect(() => {
     fetchRoles();
     fetchDepartments();
   }, []);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [
-    currentPage,
-    searchQuery,
-    selectedRole,
-    selectedDepartment,
-    selectedStatus,
-  ]);
+  // Debounce + fetch users
+ useEffect(() => {
+  if (!user || !user.role) return;
+  fetchUsers();
+}, [
+  user,
+  currentPage,
+  limit, // ✅ tambahkan ini
+  searchQuery,
+  selectedRole,
+  selectedDepartment,
+  selectedStatus,
+]);
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setCurrentPage(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
+  if (firstLoad && loading) {
+    return (
+      <DashboardLayout activeMenu="User">
+        <LoadingSpinner text="Loading user data..." />
+      </DashboardLayout>
+    );
+  }
+  // ====== RENDER ======
   return (
     <DashboardLayout activeMenu="User">
-      <div className="font-poppins">
+      <div className="font-poppins ">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -228,7 +247,6 @@ const UserList = () => {
             Add New User
           </button>
         </div>
-
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100">
@@ -262,6 +280,7 @@ const UserList = () => {
         {/* Filters */}
         <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Search */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Search
@@ -269,45 +288,56 @@ const UserList = () => {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="Search by name or email..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role
-              </label>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="">All Roles</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Department
-              </label>
-              <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="">All Departments</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+
+            {/* Show Role & Dept filter only for superadmin */}
+            {user?.role?.name !== "admin_department" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role
+                  </label>
+                  <select
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">All Roles</option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Department
+                  </label>
+                  <select
+                    value={selectedDepartment}
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">All Departments</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+
+            {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Status
@@ -328,163 +358,98 @@ const UserList = () => {
           </div>
         </div>
 
-        {/* Error Message */}
+        {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
             {error}
           </div>
         )}
 
-        {/* Users Table */}
+        {/* Table */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User Info
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role & Department
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan="5"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="5"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      No users found
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((userItem) => (
-                    <tr key={userItem.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {userItem.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {userItem.email}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            NIK: {userItem.nik}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {userItem.role?.name || "No Role"}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {userItem.department?.name || "No Department"}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            userItem.status === "active"
-                              ? "bg-green-100 text-green-800"
-                              : userItem.status === "inactive"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {userItem.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {moment(userItem.createdAt).format("DD MMM YYYY")}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => openEditModal(userItem)}
-                            className="text-primary-600 hover:text-primary-900"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => openDeleteModal(userItem)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+           <DataTable
+  loading={loading}
+  data={users}
+  columns={[
+    {
+      label: "User Info",
+      key: "userInfo",
+      render: (u) => (
+        <div>
+          <div className="text-sm font-medium text-gray-900">{u.name}</div>
+          <div className="text-sm text-gray-500">{u.email}</div>
+          <div className="text-xs text-gray-400">NIK: {u.nik}</div>
+        </div>
+      ),
+    },
+    {
+      label: "Role & Department",
+      key: "roleDept",
+      render: (u) => (
+        <div>
+          <div className="text-sm text-gray-900">
+            {u.role?.name || "No Role"}
+          </div>
+          <div className="text-sm text-gray-500">
+            {u.department?.name || "No Department"}
+          </div>
+        </div>
+      ),
+    },
+    {
+      label: "Status",
+      key: "status",
+      render: (u) => (
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+            u.status === "active"
+              ? "bg-green-100 text-green-800"
+              : u.status === "inactive"
+              ? "bg-red-100 text-red-800"
+              : "bg-yellow-100 text-yellow-800"
+          }`}
+        >
+          {u.status}
+        </span>
+      ),
+    },
+    {
+      label: "Created At",
+      key: "createdAt",
+      render: (u) =>
+        u.createdAt ? moment(u.createdAt).format("DD MMM YYYY") : "-",
+    },
+    {
+      label: "Actions",
+      key: "actions",
+      render: (u) => (
+        <ActionButtons
+          onEdit={() => openEditModal(u)}
+          onDelete={() => openDeleteModal(u)}
+        />
+      ),
+    },
+  ]}
+/>
+
           </div>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center mt-6 space-y-3 md:space-y-0">
-            <div className="text-sm text-gray-500 text-center md:text-left">
-              Showing {(currentPage - 1) * limit + 1} to{" "}
-              {Math.min(currentPage * limit, totalUsers)} of {totalUsers}{" "}
-              results
-            </div>
-            <div className="flex justify-center md:justify-end space-x-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((page) => Math.abs(page - currentPage) <= 2)
-                .map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-2 text-sm rounded-lg ${
-                      currentPage === page
-                        ? "bg-primary-600 text-white"
-                        : "border border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+       <Pagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  totalItems={totalUsers}
+  limit={limit}
+  onPageChange={setCurrentPage}
+  onLimitChange={(val) => {
+    setLimit(val);
+    setCurrentPage(1);
+  }}
+/>
 
+        {/* ===== MODALS (Create/Edit/Delete) ===== */}
         {/* Create User Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -11,8 +11,9 @@ import Login from "./pages/Auth/Login";
 import Dashboard from "./pages/Admin/Dashboard";
 import UserDashboard from "./pages/User/UserDashboard";
 import { useContext } from "react";
-
 import { AuthContext } from "./context/AuthContext";
+
+// Admin pages
 import UserList from "./pages/Admin/UserList";
 import VendorCateringList from "./pages/Admin/VendorCateringLIST";
 import LocationList from "./pages/Admin/LocationList";
@@ -21,8 +22,17 @@ import RoleList from "./pages/Admin/RoleList";
 import DepartmentList from "./pages/Admin/DepartmentList";
 import MealMenuList from "./pages/Admin/MealMenuList";
 import OrderList from "./pages/Admin/OrderList";
-import MealTrayList from "./pages/Admin/MealTrayList"
+import MealTrayList from "./pages/Admin/MealTrayList";
+
+// User pages
 import OrderForm from "./pages/User/OrderForm";
+import RecentOrders from "./pages/User/RecentOrders";
+import OrderDetail from "./pages/User/OrderDetails";
+import QRCodePage from "./pages/User/QRCodePage";
+import UserProfile from "./pages/User/UserProfile";
+import SettingsPage from "./pages/User/SettingsPage";
+import ChangePasswordPage from "./pages/User/ChangePasswordPage";
+import NotificationsPage from "./pages/User/NotificationPage";
 
 
 function App() {
@@ -47,19 +57,22 @@ function App() {
           <Route path="/admin/department" element={<DepartmentList />} />
           <Route path="/admin/role" element={<RoleList />} />
           <Route path="/admin/qr-code" element={<Dashboard />} />
-          <Route path="/admin/meal-trays" element={<MealTrayList/>}/>
+          <Route path="/admin/meal-trays" element={<MealTrayList />} />
         </Route>
 
         {/* Protected General Affair */}
         <Route element={<ProtectedRoute requiredRole="general_affair" />}>
           <Route path="/general-affair/dashboard" element={<Dashboard />} />
-          <Route path="/general-affair/users" element={<UserList />}/>
-          <Route path="/general-affair/meal-menu" element={<MealMenuList />}/>
+          <Route path="/general-affair/users" element={<UserList />} />
+          <Route path="/general-affair/meal-menu" element={<MealMenuList />} />
         </Route>
 
         {/* Protected Admin Department */}
         <Route element={<ProtectedRoute requiredRole="admin_department" />}>
           <Route path="/admin-department/dashboard" element={<Dashboard />} />
+          <Route path="/admin-department/users" element={<UserList />} />
+          <Route path="/admin-department/order" element={<OrderList />} />
+
         </Route>
 
         {/* Protected Vendor Catering */}
@@ -68,17 +81,26 @@ function App() {
           <Route path="/vendor-catering/meal-menu" element={<MealMenuList />} />
         </Route>
 
-        {/* Protected Employee */}
+        {/* Protected Employee (mobile) */}
         <Route element={<ProtectedRoute requiredRole="employee" />}>
-          <Route path="/dashboard" element={<UserDashboard />} />
-          <Route path="/order" element={<OrderForm/>}/>
+            <Route path="/dashboard" element={<UserDashboard />} />
+            <Route path="/order" element={<OrderForm />} />
+            <Route path="/qr-code" element={<QRCodePage />} />
+            <Route path="/recent-order" element={<RecentOrders />} />
+            <Route path="/recent-order/:id" element={<OrderDetail />} />
+            <Route path="/profile" element={<UserProfile />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/change-password" element={<ChangePasswordPage />} />
+            <Route path="/dashboard/notifications" element={<NotificationsPage />} />
+
+
         </Route>
+
+        {/* Root handler */}
+        <Route path="/" element={<Root />} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" />} />
-
-        <Route path="/" element={<Root />} />
-
       </Routes>
     </Router>
   );
@@ -93,10 +115,17 @@ const Root = () => {
 
   if (!user) return <Navigate to="/login" />;
 
-  return user.role.name === "admin" ? <Navigate to="/admin/dashboard" /> :
-         user.role.name === "general_affair" ? <Navigate to="/general-affair/dashboard" /> :
-         user.role.name === "admin_department" ? <Navigate to="/admin-department/dashboard" /> :
-        user.role.name === "vendor_catering" ? <Navigate to="/vendor-catering/dashboard" /> :
-         user.role.name === "employee" ? <Navigate to="/dashboard" /> :
-         <div>Role tidak dikenali</div>; 
+  return user.role.name === "admin" ? (
+    <Navigate to="/admin/dashboard" />
+  ) : user.role.name === "general_affair" ? (
+    <Navigate to="/general-affair/dashboard" />
+  ) : user.role.name === "admin_department" ? (
+    <Navigate to="/admin-department/dashboard" />
+  ) : user.role.name === "vendor_catering" ? (
+    <Navigate to="/vendor-catering/dashboard" />
+  ) : user.role.name === "employee" ? (
+    <Navigate to="/dashboard" />
+  ) : (
+    <div>Role tidak dikenali</div>
+  );
 };

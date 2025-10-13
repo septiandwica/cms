@@ -1,20 +1,25 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import moment from "moment";
+import DataTable from "../../components/common/DataTable";
+import ActionButtons from "../../components/common/ActionsButton";
+import Pagination from "../../components/common/Pagination";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 const DepartmentList = () => {
   const [departments, setDepartments] = useState([]);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [firstLoad, setFirstLoad] = useState(true);
   const [error, setError] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalDepartments, setTotalDepartments] = useState(0);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(15);
 
   // Search + filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -128,7 +133,7 @@ const DepartmentList = () => {
   // Effects
   useEffect(() => {
     fetchDepartments();
-  }, [currentPage, searchQuery, filterLocation]);
+  }, [currentPage, searchQuery, limit, filterLocation]);
 
   useEffect(() => {
     fetchLocations();
@@ -139,6 +144,13 @@ const DepartmentList = () => {
     return () => clearTimeout(timer);
   }, [searchQuery, filterLocation]);
 
+  if (firstLoad && loading) {
+    return (
+      <DashboardLayout activeMenu="Department">
+        <LoadingSpinner message="Loading Department data..." />
+      </DashboardLayout>
+    );
+  }
   return (
     <DashboardLayout activeMenu="Department">
       <div className="font-poppins">
@@ -205,113 +217,73 @@ const DepartmentList = () => {
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Users
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Created At
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                  <th className="px-6 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan="5"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                ) : departments.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="5"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      No departments found
-                    </td>
-                  </tr>
-                ) : (
-                  departments.map((dept) => (
-                    <tr key={dept.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {dept.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {dept.location?.name || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {dept.users?.length || 0}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {moment(dept.createdAt).format("DD MMM YYYY")}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => openEditModal(dept)}
-                            className="text-primary-600 hover:text-primary-900 mr-2"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => openDeleteModal(dept)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <DataTable
+              loading={loading}
+              data={departments}
+              emptyMessage="No departments found"
+              columns={[
+                {
+                  label: "Name",
+                  key: "name",
+                  render: (dept) => (
+                    <span className="text-sm font-medium text-gray-900">
+                      {dept.name}
+                    </span>
+                  ),
+                },
+                {
+                  label: "Location",
+                  key: "location",
+                  render: (dept) => (
+                    <span className="text-sm text-gray-700">
+                      {dept.location?.name || "-"}
+                    </span>
+                  ),
+                },
+                {
+                  label: "Users",
+                  key: "users",
+                  render: (dept) => (
+                    <span className="text-sm text-gray-700">
+                      {dept.users?.length || 0}
+                    </span>
+                  ),
+                },
+                {
+                  label: "Created At",
+                  key: "createdAt",
+                  render: (dept) =>
+                    dept.createdAt
+                      ? moment(dept.createdAt).format("DD MMM YYYY")
+                      : "-",
+                },
+                {
+                  label: "Actions",
+                  key: "actions",
+                  render: (dept) => (
+                    <ActionButtons
+                      onEdit={() => openEditModal(dept)}
+                      onDelete={() => openDeleteModal(dept)}
+                    />
+                  ),
+                },
+              ]}
+            />
           </div>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6">
-            <div className="text-sm text-gray-500">
-              Showing {(currentPage - 1) * limit + 1} to{" "}
-              {Math.min(currentPage * limit, totalDepartments)} of{" "}
-              {totalDepartments}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(p + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalDepartments}
+          limit={limit}
+          onPageChange={setCurrentPage}
+          onLimitChange={(val) => {
+            setLimit(val);
+            setCurrentPage(1);
+          }}
+        />
 
         {/* ===== Modals ===== */}
 

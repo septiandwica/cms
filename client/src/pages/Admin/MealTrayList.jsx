@@ -1,18 +1,23 @@
 import React, { useEffect, useState } from "react";
-import DashboardLayout from "../../components/layouts/DashboardLayout";
+import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
+import DataTable from "../../components/common/DataTable";
+import ActionButtons from "../../components/common/ActionsButton";
+import Pagination from "../../components/common/Pagination";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 const MealTrayList = () => {
   const [mealTrays, setMealTrays] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [firstLoad, setFirstLoad] = useState(true);
   const [error, setError] = useState("");
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(15);
 
   // search filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,15 +117,22 @@ const MealTrayList = () => {
 
   useEffect(() => {
     fetchMealTrays();
-  }, [currentPage, searchQuery]);
+  }, [currentPage, searchQuery, limit]);
 
   useEffect(() => {
     const timer = setTimeout(() => setCurrentPage(1), 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  if (firstLoad && loading) {
+      return (
+        <DashboardLayout activeMenu="Tray Menu">
+          <LoadingSpinner text="Loading Tray Menu..." />
+        </DashboardLayout>
+      );
+    }
   return (
-    <DashboardLayout activeMenu="Meal Tray">
+    <DashboardLayout activeMenu="Tray Menu">
       <div className="font-poppins">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
@@ -161,93 +173,42 @@ const MealTrayList = () => {
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan="2"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                ) : mealTrays.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="2"
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      No meal trays found
-                    </td>
-                  </tr>
-                ) : (
-                  mealTrays.map((t) => (
-                    <tr key={t.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {t.name}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => openEditModal(dept)}
-                            className="text-primary-600 hover:text-primary-900 mr-2"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => openDeleteModal(dept)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <DataTable
+          loading={loading}
+          data={mealTrays}
+          emptyMessage="No meal trays found"
+          columns={[
+            {
+              key: "name",
+              label: "Tray Name",
+            },
+            {
+              key: "actions",
+              label: "Actions",
+              render: (item) => (
+                <ActionButtons
+                  onEdit={() => openEditModal(item)}
+                  onDelete={() => openDeleteModal(item)}
+                />
+              ),
+            },
+          ]}
+        />
           </div>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6">
-            <div className="text-sm text-gray-500">
-              Showing {(currentPage - 1) * limit + 1} to{" "}
-              {Math.min(currentPage * limit, totalItems)} of {totalItems}
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(p + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded-lg disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+      <Pagination
+  currentPage={currentPage}
+  totalPages={totalPages}
+  totalItems={totalItems}
+  limit={limit}
+  onPageChange={(page) => setCurrentPage(page)}
+  onLimitChange={(newLimit) => {
+    setLimit(newLimit);
+    setCurrentPage(1); // reset ke page 1 kalau ubah limit
+  }}
+/>
 
         {/* ===== Modals ===== */}
 
