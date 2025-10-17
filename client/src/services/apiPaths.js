@@ -53,7 +53,10 @@ export const API_PATHS = {
     CREATE: "/vendor-caterings",
     UPDATE: (id) => `/vendor-caterings/${id}`,
     DELETE: (id) => `/vendor-caterings/${id}`,
+    PREVIEW: "/vendor-caterings/preview",
+    APPLY: "/vendor-caterings/apply",
   },
+
   MEAL_TRAYS: {
     GET_ALL: "/meal-trays",
     CREATE: "/meal-trays",
@@ -67,11 +70,11 @@ export const API_PATHS = {
     CREATE: "/meal-menus",
     UPDATE: (id) => `/meal-menus/${id}`,
     DELETE: (id) => `/meal-menus/${id}`,
-     BULK_UPLOAD: "/meal-menus/bulk", 
-    UPDATE_STATUS: (id) => `/meal-menus/${id}/status`, 
+    BULK_UPLOAD: "/meal-menus/bulk",
+    UPDATE_STATUS: (id) => `/meal-menus/${id}/status`,
     BULK_UPDATE_STATUS: "/meal-menus/bulk-update-status",
     VALIDATE: "/meal-menus/validate",
-
+    LIST_FOR_SPARE_GA: "/meal-menus/spare-ga",
   },
   QR_CODES: {
     GET_ALL: "/qr-codes",
@@ -90,9 +93,11 @@ export const API_PATHS = {
     APPROVE: (id) => `/orders/${id}/approve`,
     BULK_APPROVE: "/orders/bulk-approve",
     CHECK_WEEKLY: "/orders/check",
-     MY_ORDERS: "/orders/my",
-       COUNT_STATS: "/orders/stats/count", // 🧩 new
-  BACKUP: "/orders/backup",   
+    MY_ORDERS: "/orders/my",
+    COUNT_STATS: "/orders/stats/count", // 🧩 new
+    CREATE_SPARE: "/orders/spare",
+    VENDOR_ORDERS: "/orders/vendor",
+    WEEKLY_STATS: "/orders/stats/weekly",
   },
   ORDER_DETAILS: {
     GET_ALL: "/order-details",

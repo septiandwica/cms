@@ -1,4 +1,3 @@
-// controllers/vendorCateringController.js
 const { Vendor_Catering, User, Location, Shift, sequelize } = require("../models");
 const { Op } = require("sequelize");
 

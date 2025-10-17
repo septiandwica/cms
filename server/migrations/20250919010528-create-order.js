@@ -24,10 +24,10 @@ module.exports = {
         allowNull: false,
       },
       type: {
-        type: Sequelize.ENUM("normal", "guest", "overtime", "backup"),
+        type: Sequelize.ENUM("normal", "guest", "spare", "overtime", "backup"),
         allowNull: false,
         defaultValue: "normal",
-        comment: "Tipe order: normal, guest, overtime, backup",
+        comment: "Tipe order: normal, guest, spare , overtime, backup",
       },
       notes: {
         type: Sequelize.STRING,

@@ -8,7 +8,7 @@ export const BottomNav = () => {
 
   const navItems = [
     { id: "home", icon: Home, label: "Home", path: "/dashboard" },
-    { id: "orders", icon: ClipboardList, label: "Orders", path: "/recent-order" },
+    { id: "orders", icon: ClipboardList, label: "Orders", path: "/order" },
     { id: "qr", icon: QrCode, label: "QR", isCenter: true, path: "/qr-code" },
     { id: "profile", icon: User, label: "Profile", path: "/profile" },
     { id: "settings", icon: Settings, label: "Settings", path: "/settings" },
@@ -18,7 +18,7 @@ export const BottomNav = () => {
   // ✅ Tentukan tab aktif berdasarkan path URL
   const getActiveTab = () => {
     if (location.pathname.startsWith("/dashboard")) return "home";
-    if (location.pathname.startsWith("/recent-order")) return "orders";
+    if (location.pathname.startsWith("/order")) return "orders";
     if (location.pathname.startsWith("/qr-code")) return "qr";
     if (location.pathname.startsWith("/profile")) return "profile";
     if (location.pathname.startsWith("/settings")) return "settings";

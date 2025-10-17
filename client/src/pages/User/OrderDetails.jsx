@@ -27,10 +27,10 @@ const OrderDetail = () => {
         }
 
         const orderLike = {
-          createdAt: details[0].order?.createdAt,
-          status: details[0].order?.status,
-          order_details: details,
-        };
+  createdAt: details[0].order?.createdAt,
+  type: details[0].order?.type, // ✅ tambahkan baris ini
+  order_details: details,
+};
 
         setOrderData(orderLike);
       } catch (err) {
@@ -85,39 +85,34 @@ const OrderDetail = () => {
       <PageContainer>
         {/* Content */}
         <div className="px-4 py-6">
-          {/* Status Pill */}
-          <div className="flex justify-center mb-6">
-            <span
-              className={`px-4 py-1 rounded-full text-sm font-semibold ${
-                orderData.status === "approved"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-yellow-100 text-yellow-800"
-              }`}
-            >
-              {(orderData.status || "pending").toUpperCase()}
-            </span>
-          </div>
-
+         
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-xl font-bold text-gray-800 flex justify-center items-center gap-2">
               <ClipboardList className="w-5 h-5 text-primary-600" />
               Detail Pesanan Kamu
             </h1>
-
-            {order_details.length > 0 && (
-              <p className="text-gray-600 mt-2">
-                Periode{" "}
-                <strong className="text-primary-700">
-                  {moment(order_details[0].day).format("DD MMM")} -{" "}
-                  {moment(order_details[order_details.length - 1].day).format(
-                    "DD MMM YYYY"
-                  )}
+            <div className="flex justify-center items-center gap-2 my-2 text-center text-gray-500 text-sm">
+              <span>
+                Dibuat pada{" "}
+                <strong>
+                  {moment(orderData.createdAt).format("dddd, DD MMM YYYY")}
                 </strong>
-              </p>
-            )}
-          </div>
+              </span>
+            </div>
 
+         {order_details.length > 0 && (
+  <div className="inline-flex items-center bg-primary-50 text-primary-700 px-4 py-2 rounded-full shadow-sm text-sm font-medium">
+    <span className="mr-2">Periode</span>
+    <span className="bg-primary-100 text-primary-800 px-2 py-1 rounded-full">
+      {moment(order_details[0].day).format("DD MMM")} -{" "}
+      {moment(order_details[order_details.length - 1].day).format("DD MMM YYYY")}
+    </span>
+  </div>
+)}
+            
+            
+          </div>
           {/* Order List */}
           <div className="space-y-4">
             {order_details.map((detail) => (
@@ -132,7 +127,9 @@ const OrderDetail = () => {
                       {moment(detail.day).format("dddd, DD MMM")}
                     </h4>
                     <p className="text-sm text-gray-600 mt-1 leading-snug">
-                      {detail.meal_menu?.name || "Menu tidak tersedia"}
+                      {orderData.type === "backup"
+    ? "Tray Cadangan"
+    : detail.meal_menu?.name || "Menu tidak tersedia"}
                       {detail.meal_menu?.descriptions && (
                         <span className="text-gray-500">
                           {" "}
@@ -155,18 +152,7 @@ const OrderDetail = () => {
             ))}
           </div>
 
-          {/* Footer info */}
-          <div className="mt-10 text-center text-gray-500 text-sm">
-            <div className="flex justify-center items-center gap-2">
-              <CalendarDays className="w-4 h-4" />
-              <span>
-                Dibuat pada{" "}
-                <strong>
-                  {moment(orderData.createdAt).format("dddd, DD MMM YYYY")}
-                </strong>
-              </span>
-            </div>
-          </div>
+         
         </div>
       </PageContainer>
     </MobileLayout>

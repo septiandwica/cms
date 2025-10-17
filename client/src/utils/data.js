@@ -135,9 +135,15 @@ export const SIDE_MENU_DATA = {
     },
     { 
       id: "02", 
-      label: "Meal Menu", 
+      label: "Menu Makanan", 
       icon: UtensilsCrossed, 
       path: "/general-affair/meal-menu" 
+    },
+    { 
+      id: "02a", 
+      label: "List Order", 
+      icon: UtensilsCrossed, 
+      path: "/general-affair/order" 
     },
     {
       id: "03",
@@ -201,7 +207,7 @@ export const SIDE_MENU_DATA = {
     },
     {
       id: "02",
-      label: "Meal Menu",
+      label: "Menu Makanan",
       icon: UtensilsCrossed,
       path: "/vendor-catering/meal-menu",
     },

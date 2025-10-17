@@ -18,7 +18,7 @@ const RoleList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRoles, setTotalRoles] = useState(0);
-const [limit, setLimit] = useState(15);
+  const [limit, setLimit] = useState(15);
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -119,12 +119,12 @@ const [limit, setLimit] = useState(15);
   }, [searchQuery]);
 
   if (firstLoad && loading) {
-      return (
-        <DashboardLayout activeMenu="Role">
-          <LoadingSpinner text="Loading Role data..." />
-        </DashboardLayout>
-      );
-    }
+    return (
+      <DashboardLayout activeMenu="Role">
+        <LoadingSpinner text="Loading Role data..." />
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout activeMenu="Role">
@@ -172,51 +172,54 @@ const [limit, setLimit] = useState(15);
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <DataTable
-  loading={loading}
-  data={roles}
-  emptyMessage="No roles found"
-  columns={[
-    {
-      label: "Name",
-      key: "name",
-      render: (r) => (
-        <span className="text-sm font-medium text-gray-900">{r.name}</span>
-      ),
-    },
-    {
-      label: "Created At",
-      key: "createdAt",
-      render: (r) =>
-        r.createdAt ? moment(r.createdAt).format("DD MMM YYYY") : "-",
-    },
-    {
-  label: "Actions",
-  key: "actions",
-  render: (r) => (
-    <ActionButtons
-      onEdit={() => openEditModal(r)}
-      onDelete={() => openDeleteModal(r)}
-    />
-  ),
-},
-  ]}
-/>
+              loading={loading}
+              data={roles}
+              emptyMessage="No roles found"
+              columns={[
+                {
+                  label: "Name",
+                  key: "name",
+                  render: (r) => (
+                    <span className="text-sm font-medium text-gray-900">
+                      {r.name}
+                    </span>
+                  ),
+                },
+                {
+                  label: "Created At",
+                  key: "createdAt",
+                  render: (r) =>
+                    r.createdAt
+                      ? moment(r.createdAt).format("DD MMM YYYY")
+                      : "-",
+                },
+                {
+                  label: "Actions",
+                  key: "actions",
+                  render: (r) => (
+                    <ActionButtons
+                      onEdit={() => openEditModal(r)}
+                      onDelete={() => openDeleteModal(r)}
+                    />
+                  ),
+                },
+              ]}
+            />
           </div>
         </div>
 
         {/* Pagination */}
-       <Pagination
-  currentPage={currentPage}
-  totalPages={totalPages}
-  totalItems={totalRoles}
-  limit={limit}
-  onPageChange={setCurrentPage}
-  onLimitChange={(val) => {
-    setLimit(val);
-    setCurrentPage(1);
-  }}
-/>
-
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalRoles}
+          limit={limit}
+          onPageChange={setCurrentPage}
+          onLimitChange={(val) => {
+            setLimit(val);
+            setCurrentPage(1);
+          }}
+        />
 
         {/* ===== Modals ===== */}
 

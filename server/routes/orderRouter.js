@@ -12,6 +12,7 @@ router.use(isLoggedIn);
 // 📘 READ ROUTES
 // =======================
 
+
 // ✅ Check if user has ordered for a given week
 router.get(
   "/check",
@@ -37,6 +38,17 @@ router.get(
   orderController.listMyOrders
 );
 
+router.get(
+  "/stats/weekly",
+  requireRoles(
+    ROLES.ADMIN,
+    ROLES.GENERAL_AFFAIR,
+    ROLES.ADMIN_DEPARTMENT,
+    ROLES.VENDOR_CATERING
+  ),
+  orderController.weeklyOrderSummary
+);
+
 // ✅ List all orders (with filters & pagination)
 router.get(
   "/",
@@ -48,6 +60,12 @@ router.get(
     ROLES.VENDOR_CATERING
   ),
   orderController.listOrders
+);
+// ✅ List orders for vendor catering (filtered by vendor_catering_id)
+router.get(
+  "/vendor",
+  requireRoles(ROLES.VENDOR_CATERING),
+  orderController.listVendorOrders
 );
 
 // ✅ Get single order detail
@@ -93,12 +111,6 @@ router.post(
   orderController.createGuestOrder
 );
 
-// ✅ Create backup order (for missing employees)
-router.post(
-  "/backup",
-  requireRoles(ROLES.ADMIN, ROLES.GENERAL_AFFAIR, ROLES.ADMIN_DEPARTMENT),
-  orderController.createBackupOrders
-);
 
 // =======================
 // ✏️ UPDATE & DELETE

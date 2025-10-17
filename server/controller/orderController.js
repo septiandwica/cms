@@ -4,9 +4,12 @@ const db = require("../models");
 const {
   Order,
   User,
+  Role,
   Order_Detail,
   sequelize,
   Meal_Menu,
+  Department,
+  Location
 } = require("../models");
 
 // Helper — normalisasi role
@@ -16,34 +19,38 @@ function getRoleName(user) {
 }
 
 // =======================
-// 📘 List Orders (Enhanced & Filtered)
+// 📘 List Orders 
 // =======================
 async function listOrders(req, res, next) {
   try {
     const roleName = getRoleName(req.user);
-    const { id: userId, department_id, vendor_id } = req.user;
+    const { id: userId, department_id, vendor_catering_id } = req.user;
 
     // 📄 Pagination
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
     const offset = (page - 1) * limit;
 
-    // 🔍 Search & Filter
-    const LIKE = sequelize.getDialect() === "postgres" ? Op.iLike : Op.like;
+    // 🔍 Filter dasar
     const where = {};
-    const q = (req.query.q || "").trim();
     const type = (req.query.type || "").trim().toLowerCase();
-
-    if (q) where.status = { [LIKE]: `%${q}%` };
-    if (type && ["normal", "backup", "guest", "overtime"].includes(type))
+    if (type && ["normal", "backup", "guest", "overtime"].includes(type)) {
       where.type = type;
+    }
 
-    // 👀 Include relations
+    // 👀 Include Relations
     let include = [
       {
         model: User,
         as: "user",
         attributes: { exclude: ["password"] },
+        include: [
+          {
+            model: db.Department,
+            as: "department",
+            include: [{ model: db.Location, as: "location" }],
+          },
+        ],
         where: { status: { [Op.in]: ["active", "suspend"] } },
       },
       {
@@ -73,14 +80,41 @@ async function listOrders(req, res, next) {
             {
               model: Meal_Menu,
               as: "meal_menu",
-              where: { vendor_id },
+              where: { vendor_catering_id },
             },
           ],
         },
       ];
     }
 
-    // 🗃️ Fetch orders
+    // 🏢 Filter Department (admin / general_affair)
+    if (req.query.department_id) {
+      const departmentId = parseInt(req.query.department_id, 10);
+      if (!isNaN(departmentId)) {
+        if (!include[0].where) include[0].where = {};
+        include[0].where.department_id = departmentId;
+      }
+    }
+
+    // 📍 Filter lokasi untuk General Affair
+    if (roleName === "general_affair") {
+      const user = await User.findByPk(req.user.id, {
+        include: [
+          {
+            model: db.Department,
+            as: "department",
+            include: [{ model: db.Location, as: "location" }],
+          },
+        ],
+      });
+
+      const userLocationId = user?.department?.location_id;
+      if (userLocationId) {
+        include[0].include[0].where = { location_id: userLocationId };
+      }
+    }
+
+    // 🗃️ Fetch Orders
     const { rows, count } = await Order.findAndCountAll({
       where,
       include,
@@ -97,17 +131,31 @@ async function listOrders(req, res, next) {
       total: Number(count),
       totalPages: Math.ceil(Number(count) / limit),
       filters: {
-        q: q || null,
         type: type || "all",
         role: roleName,
       },
-      orders: rows.map((o) => o.get({ plain: true })),
+      orders: rows.map((o) => {
+        const order = o.get({ plain: true });
+        // 🔒 Employee tidak lihat menu detail pada backup order
+        if (roleName === "employee" && order.type === "backup") {
+          order.order_details = order.order_details.map((d) => ({
+            id: d.id,
+            day: d.day,
+            shift_id: d.shift_id,
+            meal_menu_id: d.meal_menu_id,
+            meal_menu: null,
+          }));
+        }
+        return order;
+      }),
     });
   } catch (err) {
     console.error("🔥 Error in listOrders:", err);
     next(err);
   }
 }
+
+
 
 // =======================
 // 📘 List Orders by Logged-in User
@@ -132,13 +180,175 @@ async function listMyOrders(req, res, next) {
     if (!orders.length)
       return res.status(404).json({ message: "Order not found" });
 
-    res.json({
-      total: orders.length,
-      orders: orders.map((o) => o.get({ plain: true })),
-    });
+   res.json({
+  total: orders.length,
+  orders: orders.map((o) => {
+    const order = o.get({ plain: true });
+    // 🔒 Employee tidak tahu isi menu backup
+    if (req.user.role?.name === "employee" && order.type === "backup") {
+      order.order_details = order.order_details.map((d) => ({
+        id: d.id,
+        day: d.day,
+        shift_id: d.shift_id,
+        meal_menu_id: d.meal_menu_id,
+        meal_menu: null,
+      }));
+    }
+    return order;
+  }),
+});
   } catch (error) {
     console.error("🔥 Error in listMyOrders:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+// =======================
+// 📦 List Orders for Vendor Catering (by vendor_catering.id)
+// =======================
+async function listVendorOrders(req, res, next) {
+  try {
+    const user = req.user;
+    const roleName = user.role?.name;
+
+    // ✅ Only vendor_catering role allowed
+    if (roleName !== "vendor_catering") {
+      return res.status(403).json({
+        message: "Only vendor catering can access this list.",
+      });
+    }
+
+    const vendor = user.vendor_catering;
+    if (!vendor?.id) {
+      return res
+        .status(400)
+        .json({ message: "Vendor data not found in your account." });
+    }
+
+    // ✅ Pagination
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit, 10) || 25, 1),
+      100
+    );
+    const offset = (page - 1) * limit;
+
+    // ✅ Date range (weekly)
+    const start = req.query.start
+      ? moment(req.query.start).startOf("day")
+      : moment().startOf("week");
+    const end = req.query.end
+      ? moment(req.query.end).endOf("day")
+      : moment().endOf("week");
+
+    // ✅ Filter only approved orders
+    const where = { status: "approved" };
+
+    // ✅ Get orders including order details for this vendor
+    const { rows, count } = await Order.findAndCountAll({
+      where,
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "name", "email"],
+          include: [
+            {
+              model: Department,
+              as: "department",
+              include: [{ model: Location, as: "location" }],
+            },
+          ],
+        },
+        {
+          model: Order_Detail,
+          as: "order_details",
+          required: true,
+          where: {
+            day: {
+              [Op.between]: [
+                start.format("YYYY-MM-DD"),
+                end.format("YYYY-MM-DD"),
+              ],
+            },
+          },
+          separate: true,
+          include: [
+            {
+              model: Meal_Menu,
+              as: "meal_menu",
+              where: { vendor_catering_id: vendor.id },
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset,
+      distinct: true,
+    });
+
+    // ✅ Generate summary by menu
+    const allDetails = rows.flatMap((o) => o.order_details);
+    const summaryByMenu = allDetails.reduce((acc, detail) => {
+      const menuName = detail.meal_menu?.name || "Unknown";
+      acc[menuName] = (acc[menuName] || 0) + 1;
+      return acc;
+    }, {});
+
+    // ✅ Find employees in same location & shift
+    const employees = await User.findAll({
+      include: [
+        {
+          model: Department,
+          as: "department",
+          include: [
+            {
+              model: Location,
+              as: "location",
+              where: { id: vendor.location_id },
+            },
+          ],
+        },
+        {
+          model: Role,
+          as: "role",
+          where: { name: "employee" },
+        },
+      ],
+      attributes: ["id", "name", "email"],
+    });
+
+    // ✅ Employees who already ordered
+    const orderedUserIds = new Set(rows.map((o) => o.user.id));
+    const notOrdered = employees.filter((e) => !orderedUserIds.has(e.id));
+
+    // ✅ Response
+    res.json({
+      page,
+      limit,
+      totalOrders: count,
+      totalPages: Math.ceil(count / limit),
+      vendor: vendor.name,
+      location: vendor.location?.name,
+      shift: vendor.shift?.name,
+      period: {
+        start: start.format("YYYY-MM-DD"),
+        end: end.format("YYYY-MM-DD"),
+      },
+      summaryByMenu,
+      notOrderedCount: notOrdered.length,
+      notOrderedUsers: notOrdered.map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+      })),
+      orders: rows.map((o) => o.get({ plain: true })),
+    });
+  } catch (err) {
+    console.error("🔥 Error in listVendorOrders:", err);
+    next(err);
   }
 }
 
@@ -148,7 +358,10 @@ async function listMyOrders(req, res, next) {
 async function getOrderById(req, res, next) {
   try {
     const roleName = getRoleName(req.user);
-    const { id: userId, department_id, vendor_id } = req.user;
+    const { id: userId, department_id } = req.user;
+
+    // ✅ Ambil vendorId dari relasi vendor_catering
+    const vendorId = req.user.vendor_catering?.id || null;
 
     const order = await Order.findByPk(req.params.id, {
       include: [
@@ -163,7 +376,7 @@ async function getOrderById(req, res, next) {
 
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // Role-based access
+    // 🔒 Role-based access
     if (roleName === "employee" && order.user_id !== userId)
       return res.status(403).json({ message: "Unauthorized access" });
 
@@ -175,17 +388,23 @@ async function getOrderById(req, res, next) {
 
     if (roleName === "vendor_catering") {
       const hasVendorMeals = order.order_details.some(
-        (d) => d.meal_menu && d.meal_menu.vendor_id === vendor_id
+        (d) =>
+          d.meal_menu &&
+          d.meal_menu.vendor_catering_id &&
+          d.meal_menu.vendor_catering_id === vendorId // ✅ gunakan vendorId dari req.user.vendor_catering
       );
+
       if (!hasVendorMeals)
         return res.status(403).json({ message: "Unauthorized access" });
     }
 
     res.json({ order: order.get({ plain: true }) });
   } catch (err) {
+    console.error("🔥 Error in getOrderById:", err);
     next(err);
   }
 }
+
 
 // =======================
 // 📊 Check Weekly Order
@@ -238,15 +457,121 @@ async function checkWeeklyOrder(req, res) {
   }
 }
 
+
+// =======================
+// 📊 Weekly Order Summary (Approved only)
+// =======================
+async function weeklyOrderSummary(req, res, next) {
+  try {
+    const roleName = getRoleName(req.user);
+    const { department_id } = req.user;
+
+    if (
+      !["admin", "general_affair", "admin_department", "vendor_catering"].includes(roleName)
+    ) {
+      return res.status(403).json({ message: "Unauthorized access." });
+    }
+
+    // 🎯 Target minggu depan (Senin–Jumat)
+    const weekStart = moment().startOf("isoWeek").add(7, "days");
+    const weekEnd = moment(weekStart).add(5, "days");
+
+    // Filter untuk karyawan aktif/suspend
+    const employeeFilter = {
+      status: { [Op.in]: ["active", "suspend"] },
+    };
+    if (roleName === "admin_department") {
+      employeeFilter.department_id = department_id;
+    }
+
+    // 🧍 Semua karyawan
+    const employees = await User.findAll({
+      include: [{ model: Role, as: "role", where: { name: "employee" } }],
+      where: employeeFilter,
+      attributes: ["id"],
+    });
+
+    // 📦 Order yang sudah approved
+    const orders = await Order.findAll({
+      where: { status: "approved" },
+      include: [
+        {
+          model: User,
+          as: "user",
+          where: employeeFilter,
+          include: [{ model: Role, as: "role", where: { name: "employee" } }],
+        },
+        {
+          model: Order_Detail,
+          as: "order_details",
+          required: true,
+          where: {
+            day: {
+              [Op.between]: [
+                weekStart.format("YYYY-MM-DD"),
+                weekEnd.format("YYYY-MM-DD"),
+              ],
+            },
+          },
+          include: [{ model: Meal_Menu, as: "meal_menu" }],
+        },
+      ],
+    });
+
+    // 🧮 Hitung total user order
+    const orderedUserIds = [...new Set(orders.map((o) => o.user_id))];
+    const totalEmployees = employees.length;
+    const totalOrdered = orderedUserIds.length;
+    const totalNotOrdered = totalEmployees - totalOrdered;
+
+    // 🍱 Group berdasarkan hari
+    const allDetails = orders.flatMap((o) => o.order_details);
+
+    const groupedByDay = {};
+
+    for (const detail of allDetails) {
+      const dayKey = moment(detail.day).format("YYYY-MM-DD");
+      const menuName = detail.meal_menu?.name || "Unknown";
+      if (!groupedByDay[dayKey]) groupedByDay[dayKey] = {};
+      groupedByDay[dayKey][menuName] = (groupedByDay[dayKey][menuName] || 0) + 1;
+    }
+
+    // 🚀 Format summary per hari
+    const summaryByDay = Object.entries(groupedByDay).map(([day, menuSummary]) => ({
+      day: `${day} (${moment(day).format("dddd")})`,
+      totalMenus: Object.keys(menuSummary).length,
+      menuSummary,
+    }));
+
+    // ✅ Response
+    res.json({
+      week: `${weekStart.format("MMM D")}–${weekEnd.format("D")}`,
+      totalEmployees,
+      totalOrdered,
+      totalNotOrdered,
+      summaryByDay,
+    });
+  } catch (err) {
+    console.error("🔥 Error in weeklyOrderSummary:", err);
+    next(err);
+  }
+}
+
+
+
 // =======================
 // 🟢 CREATE ORDER (active/suspend only)
 // =======================
 async function createOrder(req, res, next) {
   const t = await sequelize.transaction();
   try {
+    const roleName = getRoleName(req.user); // ✅ Tambahkan baris ini
     const user = await User.findByPk(req.user.id, {
       include: [{ model: db.Role, as: "role" }],
     });
+
+    if (["vendor_catering"].includes(roleName))
+      return res.status(403).json({ message: "Vendors are not allowed to create orders." });
 
     if (
       !user ||
@@ -324,6 +649,7 @@ async function createOrder(req, res, next) {
     });
   } catch (err) {
     await t.rollback();
+    console.error("🔥 Error in createOrder:", err); // ✅ biar kelihatan di log server
     next(err);
   }
 }
@@ -395,6 +721,8 @@ async function countOrderStatus(req, res, next) {
     next(err);
   }
 }
+
+
 // =======================
 // ⏱️ CREATE OVERTIME ORDER (by admin_department)
 // =======================
@@ -547,135 +875,7 @@ async function createGuestOrder(req, res, next) {
   }
 }
 
-// =======================
-// 🍱 CREATE BACKUP ORDERS (active/suspend only)
-// =======================
-async function createBackupOrders(req, res, next) {
-  const t = await sequelize.transaction();
-  try {
-    const { department_id } = req.user;
-    const roleName = getRoleName(req.user);
 
-    if (!["admin", "general_affair", "admin_department"].includes(roleName))
-      return res.status(403).json({ message: "Not authorized." });
-
-    const today = moment();
-    const currentDay = today.isoWeekday();
-    if (currentDay < 3 || currentDay > 5)
-      return res.status(400).json({ message: "Backup orders only Wed–Fri." });
-
-    const weekStart = moment().startOf("isoWeek").add(7, "days");
-    const weekEnd = moment(weekStart).add(4, "days");
-
-    const userFilter = {
-      status: { [Op.in]: ["active", "suspend"] },
-    };
-    if (roleName === "admin_department")
-      userFilter.department_id = department_id;
-
-    const employees = await db.User.findAll({
-      include: [
-        {
-          model: db.Role,
-          as: "role",
-          where: { name: "employee" },
-          attributes: [],
-        },
-      ],
-      where: userFilter,
-    });
-
-    if (!employees.length)
-      return res.status(404).json({
-        message:
-          roleName === "admin_department"
-            ? "No active/suspended employees in your department."
-            : "No active/suspended employees found.",
-      });
-
-    const orders = await db.Order.findAll({
-      include: [
-        {
-          model: db.Order_Detail,
-          as: "order_details",
-          required: true,
-          where: {
-            day: {
-              [Op.between]: [
-                weekStart.format("YYYY-MM-DD"),
-                weekEnd.format("YYYY-MM-DD"),
-              ],
-            },
-          },
-        },
-        { model: db.User, as: "user", where: userFilter },
-      ],
-    });
-
-    const orderedUserIds = [...new Set(orders.map((o) => o.user_id))];
-    const usersWithoutOrder = employees.filter(
-      (u) => !orderedUserIds.includes(u.id)
-    );
-
-    if (!usersWithoutOrder.length)
-      return res.json({
-        message:
-          roleName === "admin_department"
-            ? "All employees in your department already ordered."
-            : "All employees already ordered.",
-      });
-
-    const mealMenus = await db.Meal_Menu.findAll({
-      where: { status: "approved" },
-    });
-    if (!mealMenus.length)
-      return res.status(400).json({ message: "No available meal menus." });
-
-    const backupOrders = [];
-    for (const user of usersWithoutOrder) {
-      const order = await db.Order.create(
-        {
-          user_id: user.id,
-          order_date: today.format("YYYY-MM-DD"),
-          status: "backup",
-        },
-        { transaction: t }
-      );
-
-      const details = [];
-      for (let i = 0; i < 5; i++) {
-        const day = moment(weekStart).add(i, "days").format("YYYY-MM-DD");
-        const randomMenu =
-          mealMenus[Math.floor(Math.random() * mealMenus.length)];
-        details.push({
-          order_id: order.id,
-          day,
-          shift_id: 1,
-          meal_menu_id: randomMenu.id,
-        });
-      }
-
-      await db.Order_Detail.bulkCreate(details, { transaction: t });
-      backupOrders.push(order.id);
-    }
-
-    await t.commit();
-
-    res.json({
-      message: `🍱 Created backup orders for ${
-        usersWithoutOrder.length
-      } active/suspended employees ${
-        roleName === "admin_department"
-          ? "in your department"
-          : "across all departments"
-      } for ${weekStart.format("MMM D")}–${weekEnd.format("D")}.`,
-      order_ids: backupOrders,
-    });
-  } catch (err) {
-    await t.rollback();
-    next(err);
-  }
-}
 
 // =======================
 // 🟡 Update, Delete, Approve (unchanged except normalized role)
@@ -812,10 +1012,10 @@ async function bulkApprove(req, res, next) {
 module.exports = {
   listOrders,
   listMyOrders,
+  listVendorOrders,
   getOrderById,
   checkWeeklyOrder,
   createOrder,
-  createBackupOrders,
   createOvertimeOrder,
   createGuestOrder,
   countOrderStatus,
@@ -823,4 +1023,5 @@ module.exports = {
   deleteOrder,
   approveOrder,
   bulkApprove,
+  weeklyOrderSummary,
 };

@@ -6,16 +6,7 @@ export const OrderCard = ({ order, onClick }) => {
   const firstDay = order.order_details?.[0]?.day;
   const lastDay = order.order_details?.[order.order_details.length - 1]?.day;
 
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case "approved":
-        return "bg-green-100 text-green-800 border-green-400";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-400";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-300";
-    }
-  };
+
 
   return (
     <button
@@ -27,13 +18,7 @@ export const OrderCard = ({ order, onClick }) => {
           Periode {moment(firstDay).format("DD MMM")} -{" "}
           {moment(lastDay).format("DD MMM YYYY")}
         </h2>
-        <span
-          className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(
-            order.status
-          )}`}
-        >
-          {order.status}
-        </span>
+       
       </div>
       <p className="text-sm text-gray-600 mb-3">
         Dibuat: {moment(order.createdAt).format("dddd, DD MMM YYYY")}

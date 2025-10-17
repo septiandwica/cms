@@ -1,27 +1,40 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import axiosInstance from "../../services/axiosInstance";
 import { API_PATHS } from "../../services/apiPaths";
 import moment from "moment";
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { AuthContext } from "../../context/AuthContext";
+import DataTable from "../../components/common/DataTable";
+import ActionButtons from "../../components/common/ActionsButton";
+import Pagination from "../../components/common/Pagination";
 
 const OrderList = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [firstLoad, setFirstLoad] =useState(true);
+  const [firstLoad, setFirstLoad] = useState(true);
   const [error, setError] = useState("");
+  const { user } = useContext(AuthContext);
+  const userRole = user?.role?.name?.toLowerCase();
+  const [userLocationId, setUserLocationId] = useState(null);
+  useEffect(() => {
+    if (user?.department?.location_id) {
+      setUserLocationId(user.department.location_id);
+    }
+  }, [user]);
 
   // pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(15);
 
   // filters
-  const [searchQuery, setSearchQuery] = useState("");
-  
+
   const [orderStats, setOrderStats] = useState(null);
-const [loadingStats, setLoadingStats] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [departmentId, setDepartmentId] = useState("");
+  const [departments, setDepartments] = useState([]);
 
   // modals
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -36,26 +49,74 @@ const [loadingStats, setLoadingStats] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [newStatus, setNewStatus] = useState("");
 
+  //stats
+  const [weeklySummary, setWeeklySummary] = useState(null);
+  const [loadingWeeklySummary, setLoadingWeeklySummary] = useState(false);
+
   /** Fetch Orders */
   const fetchOrders = async () => {
     try {
       setLoading(true);
+
       const params = {
         page: currentPage,
         limit,
-        ...(searchQuery && { q: searchQuery }),
       };
-      const res = await axiosInstance.get(API_PATHS.ORDERS.GET_ALL, { params });
+
+      // Tentukan endpoint sesuai role
+      const endpoint =
+        userRole === "vendor_catering"
+          ? API_PATHS.ORDERS.VENDOR_ORDERS // ✅ vendor lihat order miliknya
+          : API_PATHS.ORDERS.GET_ALL; // role lain tetap sama
+
+      // Tambahkan filter departemen jika admin/GA
+      if (departmentId && ["admin", "general_affair"].includes(userRole)) {
+        params.department_id = departmentId;
+      }
+
+      const res = await axiosInstance.get(endpoint, { params });
       const data = res.data;
 
-      setOrders(data.orders);
-      setTotalPages(data.totalPages);
-      setTotalItems(data.total);
+      setOrders(data.orders || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalItems(data.total || 0);
       setError("");
     } catch (err) {
       setError(err?.response?.data?.message || "Failed to fetch orders");
     } finally {
       setLoading(false);
+    }
+  };
+  const fetchWeeklySummary = async () => {
+    try {
+      setLoadingWeeklySummary(true);
+      const res = await axiosInstance.get(API_PATHS.ORDERS.WEEKLY_STATS);
+      setWeeklySummary(res.data);
+    } catch (err) {
+      setError(
+        err?.response?.data?.message || "Failed to fetch weekly summary"
+      );
+    } finally {
+      setLoadingWeeklySummary(false);
+    }
+  };
+
+  /** Fetch Departments */
+  const fetchDepartments = async () => {
+    try {
+      const res = await axiosInstance.get(API_PATHS.DEPARTMENTS.GET_ALL);
+      let allDepartments = res.data.departments || [];
+
+      // ✅ Jika General Affair, filter hanya yang sesuai lokasi user
+      if (userRole === "general_affair" && userLocationId) {
+        allDepartments = allDepartments.filter(
+          (d) => d.location_id === userLocationId
+        );
+      }
+
+      setDepartments(allDepartments);
+    } catch (err) {
+      console.error("Failed to fetch departments:", err);
     }
   };
 
@@ -73,34 +134,36 @@ const [loadingStats, setLoadingStats] = useState(false);
   };
 
   const fetchOrderStats = async () => {
-  try {
-    setLoadingStats(true);
-    const res = await axiosInstance.get(API_PATHS.ORDERS.COUNT_STATS);
-    setOrderStats(res.data);
-  } catch (err) {
-    setError(err?.response?.data?.message || "Failed to fetch order stats");
-  } finally {
-    setLoadingStats(false);
-  }
-};
+    try {
+      setLoadingStats(true);
+      const res = await axiosInstance.get(API_PATHS.ORDERS.COUNT_STATS);
+      setOrderStats(res.data);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to fetch order stats");
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
-const handleCreateBackup = async () => {
-  try {
-    if (
-      !window.confirm(
-        "Are you sure you want to create backup orders for users who haven't ordered yet?"
+  const handleCreateBackup = async () => {
+    try {
+      if (
+        !window.confirm(
+          "Are you sure you want to create backup orders for users who haven't ordered yet?"
+        )
       )
-    )
-      return;
+        return;
 
-    const res = await axiosInstance.post(API_PATHS.ORDERS.BACKUP);
-    alert(res.data.message);
-    fetchOrderStats(); // refresh stats
-    fetchOrders(); // refresh orders
-  } catch (err) {
-    setError(err?.response?.data?.message || "Failed to create backup orders");
-  }
-};
+      const res = await axiosInstance.post(API_PATHS.ORDERS.BACKUP);
+      alert(res.data.message);
+      fetchOrderStats(); // refresh stats
+      fetchOrders(); // refresh orders
+    } catch (err) {
+      setError(
+        err?.response?.data?.message || "Failed to create backup orders"
+      );
+    }
+  };
   /** Delete Order */
   const handleDelete = async () => {
     try {
@@ -217,39 +280,42 @@ const handleCreateBackup = async () => {
   const getDayName = (date) => {
     return moment(date).format("dddd, DD MMM YYYY");
   };
-
   useEffect(() => {
-    fetchOrders();
-    fetchOrderStats();
-  }, [currentPage, searchQuery]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setCurrentPage(1), 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-    if (firstLoad && loading) {
-      return (
-        <DashboardLayout activeMenu="Order">
-          <LoadingSpinner message="Loading Order data..." />
-        </DashboardLayout>
-      );
+    if (userRole === "vendor_catering") {
+      fetchOrders();
+      fetchWeeklySummary();
+    } else {
+      fetchDepartments();
+      fetchOrders();
+      fetchOrderStats();
+      fetchWeeklySummary();
     }
+  }, [userRole, userLocationId, currentPage, departmentId, limit]);
+
+  if (firstLoad && loading) {
+    return (
+      <DashboardLayout activeMenu="List Order">
+        <LoadingSpinner message="Loading Order data..." />
+      </DashboardLayout>
+    );
+  }
+  const isVendor = userRole === "vendor_catering";
+
   return (
-    <DashboardLayout activeMenu="Order">
+    <DashboardLayout activeMenu="List Order">
       <div className="font-poppins">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-black font-semibold text-xl">
-              Order Management
+              {isVendor ? "My Catering Orders" : "Order Management"}
             </h2>
             <p className="text-gray-500 text-sm mt-1">
               Manage user orders • Total: {totalItems}
             </p>
           </div>
-          
-          {selectedOrders.length > 0 && (
+
+          {!isVendor && selectedOrders.length > 0 && (
             <button
               onClick={handleBulkApprove}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
@@ -272,59 +338,131 @@ const handleCreateBackup = async () => {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
-  {loadingStats ? (
-    <p className="text-gray-500 text-sm">Loading stats...</p>
-  ) : orderStats ? (
+        {/* Weekly Summary Section */}
+<div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6">
+  {loadingWeeklySummary ? (
+    <p className="text-gray-500 text-sm">Loading weekly summary...</p>
+  ) : weeklySummary ? (
     <>
-      <div>
-        <h3 className="text-lg font-semibold text-gray-800">
-          Weekly Order Summary ({orderStats.week})
-        </h3>
-        <p className="text-sm text-gray-500 mt-1">
-          Total Employees:{" "}
-          <span className="font-medium">{orderStats.totalEmployees}</span> •
-          Ordered:{" "}
-          <span className="text-green-600 font-medium">
-            {orderStats.totalOrdered}
-          </span>{" "}
-          • Not Ordered:{" "}
-          <span className="text-red-600 font-medium">
-            {orderStats.totalNotOrdered}
-          </span>
-        </p>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">
+            Order Summary ({weeklySummary.week})
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Employees:{" "}
+            <span className="font-medium">
+              {weeklySummary.totalEmployees}
+            </span>{" "}
+            • Ordered:{" "}
+            <span className="text-green-600 font-medium">
+              {weeklySummary.totalOrdered}
+            </span>{" "}
+            • Not Ordered:{" "}
+            <span className="text-red-600 font-medium">
+              {weeklySummary.totalNotOrdered}
+            </span>
+          </p>
+        </div>
       </div>
 
-      <button
-        onClick={handleCreateBackup}
-        className="mt-4 md:mt-0 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        Create Backup Orders
-      </button>
+      {/* Summary by Day */}
+      <div className="space-y-6">
+        {weeklySummary.summaryByDay?.length > 0 ? (
+          weeklySummary.summaryByDay.map((daySummary, idx) => (
+            <div
+              key={idx}
+              className="border rounded-xl p-4 bg-gray-50 hover:shadow-md transition"
+            >
+              <h4 className="font-semibold text-gray-800 mb-2 flex items-center justify-between">
+                <span>
+                  📅 {daySummary.day}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {daySummary.totalMenus} menu(s)
+                </span>
+              </h4>
+
+              {Object.keys(daySummary.menuSummary || {}).length > 0 ? (
+                <table className="min-w-full border border-gray-200 rounded-lg text-sm">
+                  <thead className="bg-white text-gray-600 uppercase text-xs">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Menu Name</th>
+                      <th className="px-4 py-2 text-right">Total Orders</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(daySummary.menuSummary).map(
+                      ([menuName, total], i) => (
+                        <tr
+                          key={i}
+                          className="border-t hover:bg-white transition"
+                        >
+                          <td className="px-4 py-2 text-gray-800">
+                            {menuName}
+                          </td>
+                          <td className="px-4 py-2 text-right font-medium">
+                            {total}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-gray-500 text-sm italic">
+                  No approved meal orders for this day.
+                </p>
+              )}
+            </div>
+          ))
+        ) : (
+          <p className="text-gray-500 text-sm">
+            No meal summary available for this week.
+          </p>
+        )}
+      </div>
     </>
   ) : (
-    <p className="text-gray-500 text-sm">No stats available.</p>
+    <p className="text-gray-500 text-sm">No weekly summary available.</p>
   )}
 </div>
+
         {/* Filters */}
-        <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by status (pending, approved, rejected)..."
-              className="px-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Department dropdown */}
+          {["admin", "general_affair"].includes(userRole) && (
+            <div>
+              <select
+                value={departmentId}
+                onChange={(e) => {
+                  setDepartmentId(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-2 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                ✕
-              </button>
-            )}
-          </div>
+                <option value="">All Departments</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {isVendor && (
+            <div className="flex items-center space-x-2">
+              <input
+                type="date"
+                onChange={(e) => {
+                  const startDate = e.target.value;
+                  fetchOrders({ start: startDate }); // backend sudah support ?start & ?end
+                }}
+                className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-gray-500 text-sm">Filter by date</span>
+            </div>
+          )}
         </div>
 
         {/* Error Alert */}
@@ -343,229 +481,156 @@ const handleCreateBackup = async () => {
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={
-                        orders.length > 0 &&
-                        selectedOrders.length === orders.length
-                      }
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Order ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Order Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Items
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created At
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan="8"
-                      className="px-6 py-8 text-center text-gray-500"
-                    >
-                      <div className="flex items-center justify-center space-x-2">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                        <span>Loading orders...</span>
+            <DataTable
+              loading={loading}
+              data={orders}
+              selectable
+              selectedIds={selectedOrders}
+              onSelectAll={(checked) =>
+                setSelectedOrders(checked ? orders.map((o) => o.id) : [])
+              }
+              onSelectRow={(id, checked) =>
+                setSelectedOrders((prev) =>
+                  checked ? [...prev, id] : prev.filter((x) => x !== id)
+                )
+              }
+              emptyMessage="No orders found"
+              maxHeight="70vh"
+              columns={[
+                {
+                  key: "id",
+                  label: "Order ID",
+                  render: (o) => (
+                    <span className="font-mono text-gray-700">#{o.id}</span>
+                  ),
+                },
+                {
+                  key: "order_date",
+                  label: "Order Date",
+                  render: (o) => moment(o.order_date).format("DD MMM YYYY"),
+                },
+                {
+                  key: "user",
+                  label: "User",
+                  render: (o) => (
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-medium text-xs">
+                          {o.user?.name?.charAt(0).toUpperCase() || "?"}
+                        </span>
                       </div>
-                    </td>
-                  </tr>
-                ) : orders.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="px-6 py-8 text-center">
-                      <div className="text-gray-400">
-                        <svg
-                          className="mx-auto h-12 w-12 mb-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                          />
-                        </svg>
-                        <p className="text-gray-500">No orders found</p>
-                        {searchQuery && (
-                          <p className="text-sm text-gray-400 mt-1">
-                            Try adjusting your search query
+                      <div className="ml-3">
+                        <p className="text-gray-900 font-medium">
+                          {o.user?.name || "-"}
+                        </p>
+                        {o.user?.email && (
+                          <p className="text-xs text-gray-500">
+                            {o.user.email}
                           </p>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ) : (
-                  orders.map((o) => (
-                    <tr
-                      key={o.id}
-                      className="hover:bg-gray-50 transition-colors"
+                    </div>
+                  ),
+                },
+                {
+                  key: "status",
+                  label: "Status",
+                  render: (o) => (
+                    <span
+                      className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                        o.status
+                      )}`}
                     >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrders.includes(o.id)}
-                          onChange={() => toggleSelectOrder(o.id)}
-                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 font-mono">
-                        #{o.id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">
-                        {moment(o.order_date).format("DD MMM YYYY")}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-medium text-xs">
-                              {o.user?.name?.charAt(0).toUpperCase() || "?"}
-                            </span>
-                          </div>
-                          <div className="ml-3">
-                            <p className="text-gray-900 font-medium">
-                              {o.user?.name || "-"}
-                            </p>
-                            {o.user?.email && (
-                              <p className="text-gray-500 text-xs">
-                                {o.user.email}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                            o.status
-                          )}`}
-                        >
-                          {o.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">
-                        <span className="font-medium">
-                          {o.order_details?.length || 0}
-                        </span>
-                        <span className="text-gray-400"> items</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {moment(o.createdAt).format("DD MMM YYYY")}
-                        <br />
-                        <span className="text-xs text-gray-400">
-                          {moment(o.createdAt).format("HH:mm")}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end space-x-2">
-                          <button
-                            onClick={() => openDetailModal(o)}
-                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                          >
-                            View
-                          </button>
-                          {o.status === "pending" && (
-                            <>
-                              <span className="text-gray-300">|</span>
-                              <button
-                                onClick={() => openApproveModal(o)}
-                                className="text-green-600 hover:text-green-900 text-sm font-medium"
-                              >
-                                Approve
-                              </button>
-                            </>
-                          )}
-                          <span className="text-gray-300">|</span>
-                          <button
-                            onClick={() => openUpdateStatusModal(o)}
-                            className="text-yellow-600 hover:text-yellow-900 text-sm font-medium"
-                          >
-                            Update
-                          </button>
-                          <span className="text-gray-300">|</span>
-                          <button
-                            onClick={() => openDeleteModal(o)}
-                            className="text-red-600 hover:text-red-900 text-sm font-medium"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      {o.status}
+                    </span>
+                  ),
+                },
+                {
+                  key: "order_details",
+                  label: "Total Items",
+                  render: (o) => (
+                    <>
+                      <span className="font-medium">
+                        {o.order_details?.length || 0}
+                      </span>{" "}
+                      <span className="text-gray-400">items</span>
+                    </>
+                  ),
+                },
+                {
+                  key: "createdAt",
+                  label: "Created At",
+                  render: (o) => (
+                    <>
+                      {moment(o.createdAt).format("DD MMM YYYY")}
+                      <br />
+                      <span className="text-xs text-gray-400">
+                        {moment(o.createdAt).format("HH:mm")}
+                      </span>
+                    </>
+                  ),
+                },
+                {
+                  key: "actions",
+                  label: "Actions",
+                  render: (o) => (
+                    <ActionButtons
+                      onView={() => openDetailModal(o)}
+                      onEdit={
+                        !isVendor ? () => openUpdateStatusModal(o) : undefined
+                      }
+                      onDelete={
+                        !isVendor ? () => openDeleteModal(o) : undefined
+                      }
+                      extraButtons={
+                        !isVendor && o.status === "pending"
+                          ? [
+                              {
+                                label: "Approve",
+                                icon: (
+                                  <svg
+                                    className="w-4 h-4 text-green-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                ),
+                                onClick: () => openApproveModal(o),
+                              },
+                            ]
+                          : []
+                      }
+                    />
+                  ),
+                },
+              ]}
+            />
           </div>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6">
-            <div className="text-sm text-gray-500">
-              Showing{" "}
-              <span className="font-medium">
-                {(currentPage - 1) * limit + 1}
-              </span>{" "}
-              to{" "}
-              <span className="font-medium">
-                {Math.min(currentPage * limit, totalItems)}
-              </span>{" "}
-              of <span className="font-medium">{totalItems}</span> orders
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-              >
-                Previous
-              </button>
-              <div className="flex items-center px-3">
-                <span className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-              </div>
-              <button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(p + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          limit={limit}
+          onPageChange={(page) => setCurrentPage(page)}
+          onLimitChange={(newLimit) => {
+            setLimit(newLimit);
+            setCurrentPage(1); // reset ke page 1 kalau ubah limit
+          }}
+        />
 
         {/* Detail Modal */}
         {showDetailModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-5000 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="sticky top-0 bg-white border-b p-6 flex justify-between items-center">
                 <div>
@@ -707,7 +772,7 @@ const handleCreateBackup = async () => {
         )}
 
         {/* Delete Modal */}
-        {showDeleteModal && (
+        {!isVendor && showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
               <div className="text-center">
@@ -760,7 +825,7 @@ const handleCreateBackup = async () => {
         )}
 
         {/* Approve Modal */}
-        {showApproveModal && (
+        {!isVendor && showApproveModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
               <div className="text-center">
@@ -809,7 +874,7 @@ const handleCreateBackup = async () => {
         )}
 
         {/* Update Status Modal */}
-        {showUpdateStatusModal && (
+        {!isVendor && showUpdateStatusModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
               <div>

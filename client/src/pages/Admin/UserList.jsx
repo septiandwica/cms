@@ -31,6 +31,8 @@ const [limit, setLimit] = useState(15);
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [locations, setLocations] = useState([]);
+const [selectedLocation, setSelectedLocation] = useState("");
 
   // Dropdown data
   const [roles, setRoles] = useState([]);
@@ -58,6 +60,34 @@ const [limit, setLimit] = useState(15);
   // Untuk mencegah double submit
   const [submitting, setSubmitting] = useState(false);
 
+  // Helper untuk filter data berdasarkan role user
+const filteredRoles = () => {
+  if (user?.role?.name === "general_affair") {
+    return roles.filter((r) =>
+      ["admin_department", "employee", "vendor_catering"].includes(r.name)
+    );
+  }
+  return roles;
+};
+
+const filteredDepartments = () => {
+  if (user?.role?.name === "general_affair" && user?.department?.location_id) {
+    const locationId = user.department.location_id;
+    return departments.filter((d) => d.location_id === locationId);
+  }
+  return departments;
+};
+
+const fetchLocations = async () => {
+  try {
+    const response = await axiosInstance.get(API_PATHS.LOCATIONS.GET_ALL);
+    setLocations(response.data.locations || response.data);
+  } catch (err) {
+    console.error("Error fetching locations:", err);
+  }
+};
+
+
   // ====== FETCH MASTER DATA ======
   const fetchRoles = async () => {
     try {
@@ -82,14 +112,14 @@ const [limit, setLimit] = useState(15);
     try {
       setLoading(true);
       const params = {
-        page: currentPage,
-        limit: limit,
-        ...(searchQuery && { q: searchQuery }),
-        ...(selectedRole && { role_id: selectedRole }),
-        ...(selectedDepartment && { department_id: selectedDepartment }),
-        ...(selectedStatus && { status: selectedStatus }),
-      };
-
+  page: currentPage,
+  limit: limit,
+  ...(searchQuery && { q: searchQuery }),
+  ...(selectedRole && { role_id: selectedRole }),
+  ...(selectedDepartment && { department_id: selectedDepartment }),
+  ...(selectedStatus && { status: selectedStatus }),
+  ...(selectedLocation && { location_id: selectedLocation }), // ✅ Tambahkan ini
+};
       const isAdminDepartment = user?.role?.name === "admin_department";
       const endpoint = isAdminDepartment
         ? API_PATHS.USERS.GET_MANAGED
@@ -203,6 +233,7 @@ const [limit, setLimit] = useState(15);
   useEffect(() => {
     fetchRoles();
     fetchDepartments();
+    fetchLocations();
   }, []);
 
   // Debounce + fetch users
@@ -217,6 +248,7 @@ const [limit, setLimit] = useState(15);
   selectedRole,
   selectedDepartment,
   selectedStatus,
+   selectedLocation,
 ]);
 
   if (firstLoad && loading) {
@@ -240,12 +272,15 @@ const [limit, setLimit] = useState(15);
               Manage system users and their permissions
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition"
-          >
-            Add New User
-          </button>
+          {["admin", "general_affair"].includes(user?.role?.name) && (
+  <button
+    onClick={() => setShowCreateModal(true)}
+    className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition"
+  >
+    Add New User
+  </button>
+)}
+
         </div>
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -310,7 +345,7 @@ const [limit, setLimit] = useState(15);
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="">All Roles</option>
-                    {roles.map((role) => (
+          {filteredRoles().map((role) => (
                       <option key={role.id} value={role.id}>
                         {role.name}
                       </option>
@@ -327,7 +362,7 @@ const [limit, setLimit] = useState(15);
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="">All Departments</option>
-                    {departments.map((dept) => (
+                    {filteredDepartments().map((dept) => (
                       <option key={dept.id} value={dept.id}>
                         {dept.name}
                       </option>
@@ -337,6 +372,28 @@ const [limit, setLimit] = useState(15);
               </>
             )}
 
+{user?.role?.name === "admin" && (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">
+      Location
+    </label>
+    <select
+      value={selectedLocation}
+      onChange={(e) => {
+        setSelectedLocation(e.target.value);
+        setCurrentPage(1);
+      }}
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+    >
+      <option value="">All Locations</option>
+      {locations.map((loc) => (
+        <option key={loc.id} value={loc.id}>
+          {loc.name}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
             {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -552,7 +609,7 @@ const [limit, setLimit] = useState(15);
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="">Select Role</option>
-                    {roles.map((role) => (
+                   {filteredRoles().map((role) => (
                       <option key={role.id} value={role.id}>
                         {role.name}
                       </option>
@@ -586,7 +643,7 @@ const [limit, setLimit] = useState(15);
                     }
                   >
                     <option value="">Select Department</option>
-                    {departments.map((dept) => (
+                    {filteredDepartments().map((dept) => (
                       <option key={dept.id} value={dept.id}>
                         {dept.name}
                       </option>
@@ -715,7 +772,7 @@ const [limit, setLimit] = useState(15);
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="">Select Role</option>
-                    {roles.map((role) => (
+                   {filteredRoles().map((role) => (
                       <option key={role.id} value={role.id}>
                         {role.name}
                       </option>
@@ -737,7 +794,7 @@ const [limit, setLimit] = useState(15);
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="">Select Department</option>
-                    {departments.map((dept) => (
+                {filteredDepartments().map((dept) => (
                       <option key={dept.id} value={dept.id}>
                         {dept.name}
                       </option>

@@ -6,7 +6,7 @@ export const TopNav = ({ userName = "User", unreadCount = 0 }) => {
   const navigate = useNavigate();
 
   const handleNotificationClick = () => {
-    navigate("/dashboard/notifications"); 
+    navigate("/dashboard/notifications");
   };
 
   return (

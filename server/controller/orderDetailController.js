@@ -40,6 +40,7 @@ async function listOrderDetails(req, res, next) {
 async function listMyOrderDetails(req, res, next) {
   try {
     const userId = req.user?.id;
+    const roleName = req.user?.role?.name;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -47,7 +48,7 @@ async function listMyOrderDetails(req, res, next) {
     // Ambil semua order milik user login
     const userOrders = await Order.findAll({
       where: { user_id: userId },
-      attributes: ["id"], // kita cuma butuh ID order-nya
+      attributes: ["id", "type", "status", "createdAt"], // ✅ tambahkan "type"
     });
 
     if (!userOrders.length) {
@@ -63,12 +64,12 @@ async function listMyOrderDetails(req, res, next) {
         {
           model: Meal_Menu,
           as: "meal_menu",
-          include: ["vendor_catering"],
+          exclude: ["vendor_catering"],
         },
         {
           model: Order,
           as: "order",
-          attributes: ["status", "createdAt"],
+          attributes: ["id", "type", "status", "createdAt"], // ✅ sertakan type di sini juga
         },
       ],
       order: [["day", "ASC"]],
@@ -78,16 +79,25 @@ async function listMyOrderDetails(req, res, next) {
       return res.status(404).json({ message: "No order details found" });
     }
 
+    // 🔒 Sembunyikan menu untuk employee yang punya order backup
+    const safeDetails = orderDetails.map((d) => {
+      const plain = d.get({ plain: true });
+      if (roleName === "employee" && plain.order?.type === "backup") {
+        // hilangkan detail menu-nya
+        plain.meal_menu = null;
+      }
+      return plain;
+    });
+
     res.json({
-      total: orderDetails.length,
-      orderDetails: orderDetails.map((d) => d.get({ plain: true })),
+      total: safeDetails.length,
+      orderDetails: safeDetails,
     });
   } catch (error) {
     console.error("🔥 Error fetching my order details:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
-
 // Create Order Detail
 async function createOrderDetail(req, res, next) {
   try {

@@ -65,6 +65,7 @@ function App() {
           <Route path="/general-affair/dashboard" element={<Dashboard />} />
           <Route path="/general-affair/users" element={<UserList />} />
           <Route path="/general-affair/meal-menu" element={<MealMenuList />} />
+          <Route path="/general-affair/order" element={<OrderList />} />
         </Route>
 
         {/* Protected Admin Department */}
@@ -79,6 +80,7 @@ function App() {
         <Route element={<ProtectedRoute requiredRole="vendor_catering" />}>
           <Route path="/vendor-catering/dashboard" element={<Dashboard />} />
           <Route path="/vendor-catering/meal-menu" element={<MealMenuList />} />
+          <Route path="/vendor-catering/order" element={<OrderList />} />
         </Route>
 
         {/* Protected Employee (mobile) */}
@@ -86,14 +88,12 @@ function App() {
             <Route path="/dashboard" element={<UserDashboard />} />
             <Route path="/order" element={<OrderForm />} />
             <Route path="/qr-code" element={<QRCodePage />} />
-            <Route path="/recent-order" element={<RecentOrders />} />
-            <Route path="/recent-order/:id" element={<OrderDetail />} />
+            <Route path="/order/recent" element={<RecentOrders />} />
+            <Route path="/order/recent/:id" element={<OrderDetail />} />
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/settings/change-password" element={<ChangePasswordPage />} />
             <Route path="/dashboard/notifications" element={<NotificationsPage />} />
-
-
         </Route>
 
         {/* Root handler */}

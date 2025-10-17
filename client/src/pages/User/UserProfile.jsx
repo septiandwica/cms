@@ -9,7 +9,6 @@ import MobileLayout from "../../components/mobile/MobileLayout"; // pastikan pat
 const UserProfile = () => {
   const navigate = useNavigate();
   const { user, stats, loading } = useUserProfile();
-  const [activeTab, setActiveTab] = useState("profile");
 
   if (loading) {
     return (

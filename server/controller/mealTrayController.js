@@ -11,16 +11,28 @@ const LIKE = () => (sequelize.getDialect() === "postgres" ? Op.iLike : Op.like);
  *   ?q=rice           -> cari by name (LIKE)
  *   &page=1&limit=25  -> pagination
  */
-async function listMealTrays(req, res, next) {
+/**
+ * GET /meal-trays
+ * Query:
+ *  - q (search by name)
+ *  - page, limit
+ */
+const listMealTrays = async (req, res, next) => {
   try {
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const { q } = req.query;
+
+    const page  = Math.max(parseInt(req.query.page, 10)  || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
     const offset = (page - 1) * limit;
 
+    const LIKE = sequelize.getDialect() === "postgres" ? Op.iLike : Op.like;
+
     const where = {};
-    const q = (req.query.q || "").trim();
-    if (q) {
-      where.name = { [LIKE()]: `%${q}%` };
+    const qTrim = (q || "").trim();
+    if (qTrim) {
+      where[Op.or] = [
+        { name: { [LIKE]: `%${qTrim}%` } },
+      ];
     }
 
     const { rows, count } = await Meal_Tray.findAndCountAll({
@@ -31,7 +43,7 @@ async function listMealTrays(req, res, next) {
       distinct: true,
     });
 
-    const items = rows.map((r) => r.get({ plain: true }));
+    const items = rows.map(r => r.get({ plain: true }));
 
     return res.json({
       page,
@@ -41,9 +53,9 @@ async function listMealTrays(req, res, next) {
       meal_trays: items,
     });
   } catch (err) {
-    next(err);
+    return next(err);
   }
-}
+};
 
 // ---------------- GET BY ID ----------------
 /**

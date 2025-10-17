@@ -18,13 +18,13 @@ router.get(
 // READ: admin & general_affair
 router.get(
   "/",
-  requireRoles(ROLES.ADMIN, ROLES.GENERAL_AFFAIR),
+  requireRoles(ROLES.ADMIN, ROLES.GENERAL_AFFAIR, ROLES.VENDOR_CATERING),
   orderDetailController.listOrderDetails
 );
 
 router.get(
   "/:id",
-  requireRoles(ROLES.ADMIN, ROLES.GENERAL_AFFAIR),
+  requireRoles(ROLES.ADMIN, ROLES.GENERAL_AFFAIR, ROLES.VENDOR_CATERING),
   orderDetailController.getOrderDetailById
 );
 

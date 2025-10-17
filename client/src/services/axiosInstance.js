@@ -25,35 +25,25 @@ axiosInstance.interceptors.request.use(
 );
 
 axiosInstance.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Check if the error has a response from the server
     if (error.response) {
-      // Handle server-side errors
       if (error.response.status === 401) {
-        // Redirect to login page on a 401 Unauthorized error
         window.location.href = "/login";
-      } else if (error.response.status >= 500) { // Using >= 500 to catch all server errors
+      } else if (error.response.status >= 500) {
         console.error("Server error:", error.response.data.message || "Please try again later.");
       } else {
-        // Log other server-side errors
         console.error("Error response:", error.response.data.message || "An error occurred.");
       }
     } else if (error.code === "ECONNABORTED") {
-        // The request was canceled due to a timeout
-        console.error("Request timeout. Please try again.");
+      console.error("Request timeout. Please try again.");
     } else {
-        // The request was made, but no response was received (e.g., network error)
-        console.error("Network error:", error.message || "Could not connect to the server.");
+      console.error("Network error:", error.message || "Could not connect to the server.");
     }
 
-    // Always reject the promise with a meaningful error message
-    return Promise.reject(
-      error.response?.data?.message || error.message || "An unknown error occurred"
-    );
+    // ⛔ JANGAN ubah error jadi string
+    // ✅ Biarkan error asli tetap diteruskan agar catch bisa akses err.response.data.message
+    return Promise.reject(error);
   }
 );
-
 export default axiosInstance;

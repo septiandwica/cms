@@ -42,6 +42,13 @@ router.get(
   ),
   mealMenuController.getNextWeekMenus
 );
+router.get(
+  "/spare-ga",
+  isLoggedIn,
+  requireRoles(ROLES.GENERAL_AFFAIR, ROLES.ADMIN),
+  mealMenuController.listForSpareGA
+);
+
 
 // === GET BY ID ===
 router.get(

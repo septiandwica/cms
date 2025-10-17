@@ -67,7 +67,7 @@ app.use("/locations", require("./routes/locationRouter.js"));
 app.use("/departments", require("./routes/departmentRouter.js"));
 app.use("/meal-trays", require("./routes/mealTrayRouter.js"));
 app.use("/shifts", require("./routes/shiftRouter.js"));
-app.use("/vendor-caterings", require("./routes/vendorCatering.js"));
+app.use("/vendor-caterings", require("./routes/vendorCateringRouter.js"));
 app.use("/meal-menus", require("./routes/mealMenuRouter.js"));
 app.use("/qr-codes", require("./routes/qrCodeRouter.js"));
 app.use("/orders", require("./routes/orderRouter.js"));

@@ -19,7 +19,8 @@ const MealTrayList = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [limit, setLimit] = useState(15);
 
-  // search filter
+  // search debounce
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   // modals
@@ -48,15 +49,15 @@ const MealTrayList = () => {
         params,
       });
       const data = res.data;
-
-      setMealTrays(data.meal_trays);
-      setTotalPages(data.totalPages);
-      setTotalItems(data.total);
+      setMealTrays(data.meal_trays || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalItems(data.total || 0);
       setError("");
     } catch (err) {
       setError(err?.response?.data?.message || "Failed to fetch meal trays");
     } finally {
       setLoading(false);
+      setFirstLoad(false);
     }
   };
 
@@ -115,22 +116,28 @@ const MealTrayList = () => {
 
   const resetForm = () => setFormData({ name: "" });
 
+  /** Debounce search: hanya fetch kalau user berhenti ngetik */
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+      setCurrentPage(1);
+    }, 500); // tunggu 0.5 detik setelah berhenti ngetik
+    return () => clearTimeout(delay);
+  }, [searchInput]);
+
+  /** Fetch trays setiap kali query/pagination berubah */
   useEffect(() => {
     fetchMealTrays();
   }, [currentPage, searchQuery, limit]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setCurrentPage(1), 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
   if (firstLoad && loading) {
-      return (
-        <DashboardLayout activeMenu="Tray Menu">
-          <LoadingSpinner text="Loading Tray Menu..." />
-        </DashboardLayout>
-      );
-    }
+    return (
+      <DashboardLayout activeMenu="Tray Menu">
+        <LoadingSpinner text="Loading Tray Menu..." />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout activeMenu="Tray Menu">
       <div className="font-poppins">
@@ -156,8 +163,8 @@ const MealTrayList = () => {
         <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6">
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by tray name..."
             className="px-3 py-2 border rounded-lg w-full"
           />
@@ -174,41 +181,41 @@ const MealTrayList = () => {
         <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <DataTable
-          loading={loading}
-          data={mealTrays}
-          emptyMessage="No meal trays found"
-          columns={[
-            {
-              key: "name",
-              label: "Tray Name",
-            },
-            {
-              key: "actions",
-              label: "Actions",
-              render: (item) => (
-                <ActionButtons
-                  onEdit={() => openEditModal(item)}
-                  onDelete={() => openDeleteModal(item)}
-                />
-              ),
-            },
-          ]}
-        />
+              loading={loading}
+              data={mealTrays}
+              emptyMessage="No meal trays found"
+              columns={[
+                {
+                  key: "name",
+                  label: "Tray Name",
+                },
+                {
+                  key: "actions",
+                  label: "Actions",
+                  render: (item) => (
+                    <ActionButtons
+                      onEdit={() => openEditModal(item)}
+                      onDelete={() => openDeleteModal(item)}
+                    />
+                  ),
+                },
+              ]}
+            />
           </div>
         </div>
 
         {/* Pagination */}
-      <Pagination
-  currentPage={currentPage}
-  totalPages={totalPages}
-  totalItems={totalItems}
-  limit={limit}
-  onPageChange={(page) => setCurrentPage(page)}
-  onLimitChange={(newLimit) => {
-    setLimit(newLimit);
-    setCurrentPage(1); // reset ke page 1 kalau ubah limit
-  }}
-/>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          limit={limit}
+          onPageChange={setCurrentPage}
+          onLimitChange={(val) => {
+            setCurrentPage(1);
+            setLimit(val);
+          }}
+        />
 
         {/* ===== Modals ===== */}
 

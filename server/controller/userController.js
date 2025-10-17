@@ -1,40 +1,144 @@
-const { User, Role, Department, Location, sequelize } = require("../models");
+const { User, Role, Department, Location, sequelize, Vendor_Catering, Shift } = require("../models");
 const bcrypt = require("bcrypt");
 const { Op } = require("sequelize");
 
 /** GET /users/me */
-const getMe = (req, res) => {
-  const user = typeof req.user.get === "function"
-    ? req.user.get({ plain: true })
-    : { ...req.user };
+const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ["password"] },
+      include: [
+        { model: Role, as: "role", attributes: ["id", "name"] },
+        {
+          model: Department,
+          as: "department",
+          attributes: ["id", "name", "location_id"],
+          include: [{ model: Location, as: "location", attributes: ["id", "name"] }],
+        },
+        // ✅ tambahkan vendor_catering (opsional)
+        {
+          model: Vendor_Catering,
+          as: "vendor_catering",
+          include: [
+            { model: Shift, as: "shift", attributes: ["id", "name"] },
+            { model: Location, as: "location", attributes: ["id", "name"] },
+          ],
+          required: false, // penting agar user non-vendor tidak error
+        },
+      ],
+    });
 
-  if (user.password) delete user.password;
-  return res.json({ user });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.json({ user });
+  } catch (err) {
+    console.error("❌ getMe error:", err);
+    return next(err);
+  }
 };
+
 
 /** GET /users/all */
 const getAllUsers = async (req, res, next) => {
   try {
-    const { q, role_id, department_id, status } = req.query;
+    const { q, role_id, department_id, status, location_id } = req.query; // ✅ tambahkan location_id
+    const currentUser = req.user;
 
-    const page  = Math.max(parseInt(req.query.page, 10)  || 1, 1);
+    const currentUserFull = await User.findByPk(currentUser.id, {
+      include: [
+        { model: Role, as: "role", attributes: ["id", "name"] },
+        {
+          model: Department,
+          as: "department",
+          attributes: ["id", "name", "location_id"],
+          include: [{ model: Location, as: "location", attributes: ["id", "name"] }],
+        },
+        {
+          model: Vendor_Catering,
+          as: "vendor_catering",
+          include: [{ model: Location, as: "location", attributes: ["id", "name"] }],
+        },
+      ],
+    });
+
+    if (!currentUserFull) return res.status(401).json({ message: "Unauthorized" });
+
+    const userRole = currentUserFull.role?.name;
+    const userLocationId =
+      currentUserFull.department?.location_id ||
+      currentUserFull.vendor_catering?.location_id ||
+      null;
+    const userDeptId = currentUserFull.department_id || null;
+
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
     const offset = (page - 1) * limit;
 
     const LIKE = sequelize.getDialect() === "postgres" ? Op.iLike : Op.like;
-
     const where = {};
+    const andConditions = [];
+
+    // ===========================
+    // 🔍 Filters dasar
+    // ===========================
     const qTrim = (q || "").trim();
     if (qTrim) {
       where[Op.or] = [
-        { name:  { [LIKE]: `%${qTrim}%` } },
+        { name: { [LIKE]: `%${qTrim}%` } },
         { email: { [LIKE]: `%${qTrim}%` } },
       ];
     }
-    if (role_id)       where.role_id = role_id;
+    if (role_id) where.role_id = role_id;
     if (department_id) where.department_id = department_id;
-    if (status)        where.status = status;
+    if (status) where.status = status;
 
+    // ✅ Tambahkan filter lokasi manual (hanya jika role admin)
+    if (location_id && userRole === "admin") {
+      andConditions.push(
+        sequelize.literal(
+          `(\`department\`.\`location_id\` = ${Number(location_id)} OR \`vendor_catering\`.\`location_id\` = ${Number(location_id)})`
+        )
+      );
+    }
+
+    // ===========================
+    // 🔐 Filter berdasarkan role
+    // ===========================
+    if (userRole === "admin") {
+      // admin bisa lihat semua
+    } else if (userRole === "general_affair") {
+      where.id = { [Op.ne]: currentUser.id };
+      if (userLocationId)
+        andConditions.push(
+          sequelize.literal(
+            `(\`department\`.\`location_id\` = ${userLocationId} OR \`vendor_catering\`.\`location_id\` = ${userLocationId})`
+          )
+        );
+    } else if (userRole === "admin_department") {
+      where.id = { [Op.ne]: currentUser.id };
+      where.department_id = userDeptId;
+
+      const employeeRole = await Role.findOne({ where: { name: "employee" } });
+      if (employeeRole) where.role_id = employeeRole.id;
+    } else if (userRole === "vendor_catering") {
+      where.id = { [Op.ne]: currentUser.id };
+
+      const employeeRole = await Role.findOne({ where: { name: "employee" } });
+      if (employeeRole) where.role_id = employeeRole.id;
+
+      if (userLocationId)
+        andConditions.push(
+          sequelize.literal(`\`department\`.\`location_id\` = ${userLocationId}`)
+        );
+    } else {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    if (andConditions.length) where[Op.and] = andConditions;
+
+    // ===========================
+    // 🧭 Query
+    // ===========================
     const { rows, count } = await User.findAndCountAll({
       where,
       attributes: { exclude: ["password"] },
@@ -46,6 +150,13 @@ const getAllUsers = async (req, res, next) => {
           attributes: ["id", "name", "location_id"],
           include: [{ model: Location, as: "location", attributes: ["id", "name"] }],
         },
+        {
+          model: Vendor_Catering,
+          as: "vendor_catering",
+          attributes: ["id", "name", "location_id"],
+          include: [{ model: Location, as: "location", attributes: ["id", "name"] }],
+          required: false,
+        },
       ],
       order: [["createdAt", "DESC"]],
       limit,
@@ -53,7 +164,7 @@ const getAllUsers = async (req, res, next) => {
       distinct: true,
     });
 
-    const users = rows.map(u => u.get({ plain: true }));
+    const users = rows.map((u) => u.get({ plain: true }));
 
     return res.json({
       page,
@@ -63,9 +174,12 @@ const getAllUsers = async (req, res, next) => {
       users,
     });
   } catch (err) {
+    console.error("❌ getAllUsers error:", err);
     return next(err);
   }
 };
+
+
 
 /** GET /users/:id */
 const getUserById = async (req, res, next) => {
@@ -323,6 +437,8 @@ const deleteUser = async (req, res, next) => {
     return next(err);
   }
 };
+
+// helper getuserbylocation
 
 module.exports = {
   getMe,

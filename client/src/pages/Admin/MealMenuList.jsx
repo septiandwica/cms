@@ -7,7 +7,7 @@ import moment from "moment";
 import DataTable from "../../components/common/DataTable";
 import ActionButtons from "../../components/common/ActionsButton";
 import Pagination from "../../components/common/Pagination";
-import FilterBar from "../../components/common/FilterBar";
+
 import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 const MealMenuList = () => {
@@ -26,10 +26,17 @@ const MealMenuList = () => {
   const [limit, setLimit] = useState(15);
 
   // filters
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+const [searchInput, setSearchInput] = useState("");
+const [searchQuery, setSearchQuery] = useState("");
+const [statusFilter, setStatusFilter] = useState("");
+const [dateFrom, setDateFrom] = useState("");
+const [dateTo, setDateTo] = useState("");
+const [selectedShift, setSelectedShift] = useState("");
+const [selectedLocation, setSelectedLocation] = useState("");
+const [nextWeekOnly, setNextWeekOnly] = useState(false);
+
+const [locations, setLocations] = useState([]);
+const [shifts, setShifts] = useState([]);
 
   // modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -39,6 +46,7 @@ const MealMenuList = () => {
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
+  
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState({
     vendor_catering_id: "",
@@ -51,6 +59,24 @@ const MealMenuList = () => {
     status_notes: "",
   });
 
+
+const fetchLocations = async () => {
+  try {
+    const res = await axiosInstance.get(API_PATHS.LOCATIONS.GET_ALL);
+    setLocations(res.data.locations || res.data);
+  } catch (err) {
+    console.error("Failed to fetch locations:", err);
+  }
+};
+
+const fetchShifts = async () => {
+  try {
+    const res = await axiosInstance.get(API_PATHS.SHIFTS.GET_ALL);
+    setShifts(res.data.shifts || res.data);
+  } catch (err) {
+    console.error("Failed to fetch shifts:", err);
+  }
+};
   /** Fetch Meal Trays */
   const fetchMealTrays = async () => {
     try {
@@ -62,58 +88,54 @@ const MealMenuList = () => {
   };
 
   /** Fetch Meal Menus */
-  const fetchMealMenus = async () => {
-    try {
-      setLoading(true);
-      const params = {
-        page: currentPage,
-        limit,
-        ...(searchQuery && { q: searchQuery }),
-        ...(statusFilter && { status: statusFilter }),
-        ...(dateFrom && { date_from: dateFrom }),
-        ...(dateTo && { date_to: dateTo }),
-      };
-      const res = await axiosInstance.get(API_PATHS.MEAL_MENUS.GET_ALL, {
-        params,
-      });
-      const data = res.data;
-      setMealMenus(data.meal_menus);
-      setTotalPages(data.totalPages);
-      setTotalItems(data.total);
-      setError("");
-    } catch (err) {
-      setError(err?.response?.data?.message || "Failed to fetch meal menus");
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchMealMenus = async () => {
+  try {
+    setLoading(true);
+    const params = {
+      page: currentPage,
+      limit,
+      ...(searchQuery && { q: searchQuery }),
+      ...(statusFilter && { status: statusFilter }),
+      ...(dateFrom && { date_from: dateFrom }),
+      ...(dateTo && { date_to: dateTo }),
+      ...(selectedShift && { shift_id: selectedShift }),
+      ...(selectedLocation && { location_id: selectedLocation }),
+      ...(nextWeekOnly && { next_week: true }),
+      ...(userRole === "vendor_catering" && { location_id: user?.vendor_catering?.location_id }),
+      ...(userRole === "general_affair" && { location_id: user?.department?.location_id }),
+    };
+
+    const res = await axiosInstance.get(API_PATHS.MEAL_MENUS.GET_ALL, { params });
+    const data = res.data;
+    setMealMenus(data.meal_menus);
+    setTotalPages(data.totalPages);
+    setTotalItems(data.total);
+    setError("");
+  } catch (err) {
+    setError(err?.response?.data?.message || "Failed to fetch meal menus");
+  } finally {
+    setLoading(false);
+    setFirstLoad(false);
+  }
+};
 
   /** Helper: Get valid menu range (Monday–Friday next weeks) */
   const getAllowedMenuDateRange = () => {
-    const today = new Date();
-    const day = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-
-    // Cari Senin minggu depan
-    const daysUntilNextMonday = (8 - day) % 7 || 7;
-    const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilNextMonday);
-
-    // Minggu target: Senin–Jumat minggu depan
-    const targetMonday = nextMonday;
-    const targetFriday = new Date(targetMonday);
-    targetFriday.setDate(targetMonday.getDate() + 4);
+    const today = moment();
+    const nextMonday = today.clone().isoWeekday(8); // Senin minggu depan
+    const nextFriday = nextMonday.clone().add(4, "days");
 
     return {
-      from: targetMonday.toISOString().slice(0, 10),
-      to: targetFriday.toISOString().slice(0, 10),
+      from: nextMonday.format("YYYY-MM-DD"),
+      to: nextFriday.format("YYYY-MM-DD"),
     };
   };
 
   /** Helper: Check if today allowed to create (Fri–Wed only) */
-  const canCreateToday = () => {
-    const day = new Date().getDay();
-    return day !== 4; // Thursday not allowed
-  };
+const canCreateToday = () => {
+  const day = moment().isoWeekday(); // 1 = Senin, ..., 7 = Minggu
+  return day !== 4; // ❌ Kamis (Thursday) tidak diperbolehkan
+};
 
   /** Create */
   /** Create */
@@ -158,7 +180,7 @@ const MealMenuList = () => {
       resetForm();
       fetchMealMenus();
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to create meal menu");
+      setError(err?.response?.data?.message);
     }
   };
 
@@ -231,7 +253,7 @@ const MealMenuList = () => {
       });
       alert("Status updated successfully!");
       setSelectedIds([]);
-      setShowBulkModal(false);
+      setShowBulkUpdateModal(false);
       fetchMealMenus();
     } catch (err) {
       console.error(err);
@@ -303,11 +325,20 @@ const MealMenuList = () => {
       status_notes: "",
     });
 
-  useEffect(() => {
-    fetchMealMenus();
-    fetchMealTrays();
-  }, [currentPage, searchQuery, statusFilter, dateFrom, dateTo, limit]);
+useEffect(() => {
+  fetchMealMenus();
+  fetchMealTrays();
+  fetchLocations();
+  fetchShifts();
+}, [currentPage, searchQuery, statusFilter, dateFrom, dateTo, selectedShift, selectedLocation, nextWeekOnly, limit]);
 
+  useEffect(() => {
+  const timer = setTimeout(() => {
+    setSearchQuery(searchInput.trim());
+    setCurrentPage(1);
+  }, 500);
+  return () => clearTimeout(timer);
+}, [searchInput]);
   const canViewVendor = ["admin", "general_affair"].includes(userRole);
   const isVendor = userRole === "vendor_catering";
 
@@ -332,45 +363,119 @@ const MealMenuList = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            {isVendor && (
-              <button
-                onClick={() => setShowBulkUploadModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-              >
-                Upload Excel/CSV
-              </button>
-            )}
-            {(userRole === "admin" || userRole === "general_affair") && (
-              <button
-                onClick={() => setShowBulkUpdateModal(true)}
-                disabled={selectedIds.length === 0}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
-              >
-                Bulk Update Status
-              </button>
-            )}
+  {/* Upload Excel hanya vendor */}
+  {isVendor && (
+    <button
+      onClick={() => setShowBulkUploadModal(true)}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+    >
+      Upload Excel/CSV
+    </button>
+  )}
 
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg"
-            >
-              Add Meal Menu
-            </button>
-          </div>
+  {/* Bulk update hanya admin / GA */}
+  {(userRole === "admin" || userRole === "general_affair") && (
+    <button
+      onClick={() => setShowBulkUpdateModal(true)}
+      disabled={selectedIds.length === 0}
+      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+    >
+      Bulk Update Status
+    </button>
+  )}
+
+  {/* Add Meal Menu hanya vendor */}
+  {isVendor && (
+    <button
+      onClick={() => setShowCreateModal(true)}
+      className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg"
+    >
+      Add Meal Menu
+    </button>
+  )}
+</div>
         </div>
 
-        {/* Filters */}
-        <FilterBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          dateFrom={dateFrom}
-          onDateFromChange={setDateFrom}
-          dateTo={dateTo}
-          onDateToChange={setDateTo}
-          placeholder="Search by menu name..."
-        />
+     <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+      <input
+        type="text"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        placeholder="Search by menu name..."
+        className="w-full px-3 py-2 border rounded-lg"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+      <select
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value)}
+        className="w-full px-3 py-2 border rounded-lg"
+      >
+        <option value="">All</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="revisi">Revisi</option>
+      </select>
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+      <select
+        value={selectedLocation}
+        onChange={(e) => setSelectedLocation(e.target.value)}
+        className="w-full px-3 py-2 border rounded-lg"
+      >
+        <option value="">All</option>
+        {locations.map((l) => (
+          <option key={l.id} value={l.id}>{l.name}</option>
+        ))}
+      </select>
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Shift</label>
+      <select
+        value={selectedShift}
+        onChange={(e) => setSelectedShift(e.target.value)}
+        className="w-full px-3 py-2 border rounded-lg"
+      >
+        <option value="">All</option>
+        {shifts.map((s) => (
+          <option key={s.id} value={s.id}>{s.name}</option>
+        ))}
+      </select>
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+      <input
+        type="date"
+        value={dateFrom}
+        onChange={(e) => setDateFrom(e.target.value)}
+        className="w-full px-3 py-2 border rounded-lg"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+      <input
+        type="date"
+        value={dateTo}
+        onChange={(e) => setDateTo(e.target.value)}
+        className="w-full px-3 py-2 border rounded-lg"
+      />
+    </div>
+    <div className="flex items-center mt-6">
+      <input
+        type="checkbox"
+        checked={nextWeekOnly}
+        onChange={(e) => setNextWeekOnly(e.target.checked)}
+        className="mr-2"
+      />
+      <label className="text-sm text-gray-700">Show Next Week Only</label>
+    </div>
+  </div>
+</div>
 
         {/* Error */}
         {error && (
@@ -402,18 +507,25 @@ const MealMenuList = () => {
                 { key: "name", label: "Menu" },
                 { key: "descriptions", label: "Description" },
                 { label: "Tray", render: (m) => m.meal_tray?.name || "-" },
-                {
-                  label: "Vendor",
-                  render: (m) => m.vendor_catering?.name || "-",
-                },
-                {
-                  label: "Shift",
-                  render: (m) => m.vendor_catering?.shift?.name || "-",
-                },
-                {
-                  label: "Location",
-                  render: (m) => m.vendor_catering?.location?.name || "-",
-                },
+
+                // ✅ Hanya tampil untuk admin & GA
+                ...(!isVendor
+                  ? [
+                      {
+                        label: "Vendor",
+                        render: (m) => m.vendor_catering?.name || "-",
+                      },
+                      {
+                        label: "Shift",
+                        render: (m) => m.vendor_catering?.shift?.name || "-",
+                      },
+                      {
+                        label: "Location",
+                        render: (m) => m.vendor_catering?.location?.name || "-",
+                      },
+                    ]
+                  : []),
+
                 {
                   label: "Status",
                   render: (m) => (
@@ -434,7 +546,13 @@ const MealMenuList = () => {
                   label: "Actions",
                   render: (m) => (
                     <ActionButtons
-                      onEdit={() => openEditModal(m)}
+                      onEdit={() => {
+                        if (["approved", "pending"].includes(m.status)) {
+                          alert("You cannot edit approved or pending menus.");
+                          return;
+                        }
+                        openEditModal(m);
+                      }}
                       onDelete={() => openDeleteModal(m)}
                     />
                   ),
@@ -561,17 +679,50 @@ const ModalForm = ({
 
   /** 🔹 Fetch active vendors (untuk Admin / GA) */
   useEffect(() => {
-    if (isAdmin || isGeneralAffair) {
-      axiosInstance
-        .get(API_PATHS.VENDOR_CATERINGS.GET_ALL)
-        .then((res) => {
-          const allVendors = res.data.vendor_caterings || [];
-          const active = allVendors.filter((v) => v.status === "active");
-          setVendors(active);
-        })
-        .catch((err) => console.error("Failed to fetch vendors:", err));
-    }
-  }, []);
+    const fetchAvailableTrays = async () => {
+      if (!formData.for_date) {
+        setAvailableTrays([]);
+        return;
+      }
+
+      try {
+        const dateStr = moment(formData.for_date).format("YYYY-MM-DD");
+        const res = await axiosInstance.get(API_PATHS.MEAL_MENUS.GET_ALL, {
+          params: {
+            date_from: dateStr,
+            date_to: dateStr,
+          },
+        });
+
+        const currentShiftId = isVendor
+          ? user?.vendor_catering?.shift_id
+          : vendors.find((v) => v.id == formData.vendor_catering_id)?.shift_id;
+
+        if (!currentShiftId) {
+          console.warn("⚠️ No shift found, showing all trays");
+          setAvailableTrays(mealTrays);
+          return;
+        }
+
+        const usedTrayIds = new Set(
+          res.data.meal_menus
+            .filter((m) => m.vendor_catering?.shift_id === currentShiftId)
+            .map((m) => m.meal_tray_id)
+        );
+
+        const filtered = mealTrays.filter(
+          (t) => !usedTrayIds.has(t.id) || t.id === formData.meal_tray_id
+        );
+
+        setAvailableTrays(filtered);
+      } catch (err) {
+        console.error("Failed to filter trays:", err);
+        setAvailableTrays(mealTrays); // fallback
+      }
+    };
+
+    if (mealTrays.length > 0) fetchAvailableTrays();
+  }, [formData.for_date, formData.vendor_catering_id, mealTrays]);
 
   /** 🔹 Filter trays yang belum dipakai di tanggal & shift vendor */
   useEffect(() => {
@@ -593,7 +744,10 @@ const ModalForm = ({
         // Dapatkan shift yang sedang aktif
         const currentShiftId = isVendor
           ? user?.vendor_catering?.shift_id
-          : vendors.find((v) => v.id === formData.vendor_catering_id)?.shift_id;
+          : vendors.find((v) => v.id == formData.vendor_catering_id)?.shift_id;
+
+        console.log("🔍 currentShiftId", currentShiftId);
+        console.log("🔍 vendor_catering_id", formData.vendor_catering_id);
 
         // Tray yang sudah dipakai di tanggal & shift ini
         const usedTrayIds = new Set(
@@ -843,7 +997,6 @@ const ModalForm = ({
     </div>
   );
 };
-
 
 const BulkUpdateStatusModal = ({ onClose, onUpdate }) => {
   const [newStatus, setNewStatus] = useState("approved");

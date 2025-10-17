@@ -37,7 +37,7 @@ const RecentOrdersEmployee = () => {
   }, [user]);
 
   const handleOrderClick = (orderId) => {
-    navigate(`/recent-order/${orderId}`);
+    navigate(`/order/recent/${orderId}`);
   };
 
   if (loading) {

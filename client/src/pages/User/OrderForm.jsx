@@ -7,7 +7,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { Loader2, CalendarDays, CheckCircle2, Lock } from "lucide-react";
 import { PageContainer } from "../../components/common/PageContainer";
 import MobileLayout from "../../components/mobile/MobileLayout";
-import { LoadingSpinner } from "../../components/common/LoadingSpinner"; // ✅ import spinner elegan
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
 
 const OrderForm = () => {
   const navigate = useNavigate();
@@ -17,18 +17,19 @@ const OrderForm = () => {
   const [menusByDate, setMenusByDate] = useState({});
   const [selectedShift, setSelectedShift] = useState("");
   const [selectedMenus, setSelectedMenus] = useState({});
-  const [loading, setLoading] = useState(true); // ⬅️ default true (tampilkan spinner saat awal)
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [alreadyOrdered, setAlreadyOrdered] = useState(false);
 
-  // ✅ Hitung tanggal minggu depan
-  const nextMonday = moment().add(1, "weeks").startOf("isoWeek");
+  // 📅 Hitung minggu depan (Senin - Jumat)
+  const nextMonday = moment().isoWeekday(8);
   const nextFriday = moment(nextMonday).add(4, "days");
   const nextWeekDays = Array.from({ length: 5 }, (_, i) =>
     moment(nextMonday).add(i, "days")
   );
 
+  // ⏰ Aturan waktu order
   const today = moment();
   const currentDay = today.isoWeekday();
   const currentTime = today.hour();
@@ -37,7 +38,8 @@ const OrderForm = () => {
     currentDay === 5 ||
     (currentDay === 6 && currentTime < 12);
 
-  // ✅ Ambil data shift
+  // 🟢 Ambil data shift & status order
+  
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -52,7 +54,7 @@ const OrderForm = () => {
         const ordered = orderRes.data.alreadyOrdered || false;
         setAlreadyOrdered(ordered);
 
-        if (ordered) navigate("/recent-order");
+        if (ordered) navigate("/order/recent");
       } catch (err) {
         console.error("Init load error:", err);
         setError("Gagal memuat data awal.");
@@ -64,34 +66,22 @@ const OrderForm = () => {
     if (user) fetchInitialData();
   }, [user]);
 
-  // ✅ Ambil menu berdasarkan shift
+  // 🍱 Ambil daftar menu minggu depan (tanpa filter shift)
   useEffect(() => {
-    if (!selectedShift) return;
+    if (!selectedShift) return; // masih butuh user pilih shift biar UI tetap sinkron
 
     const fetchMenus = async () => {
       setLoading(true);
       try {
-        const res = await axiosInstance.get(
-          API_PATHS.MEAL_MENUS.GET_NEXT_WEEK,
-          {
-            params: { shift_id: selectedShift },
-          }
-        );
+        const res = await axiosInstance.get(API_PATHS.MEAL_MENUS.GET_NEXT_WEEK, {
+  params: { shift_id: selectedShift },
+});
 
         const allMenus =
-          res.data.meal_menus ||
-          res.data.mealMenus ||
-          res.data.data ||
-          res.data ||
-          [];
+          res.data.meal_menus || res.data.mealMenus || res.data.data || [];
 
-        const filtered = allMenus.filter(
-          (m) =>
-            m.vendor_catering?.shift?.id === parseInt(selectedShift, 10) &&
-            m.status?.toLowerCase() === "approved"
-        );
-
-        const grouped = filtered.reduce((acc, menu) => {
+        // ✅ Grouping by date (karena vendor sudah auto-filter di backend)
+        const grouped = allMenus.reduce((acc, menu) => {
           const date = menu.for_date;
           if (!acc[date]) acc[date] = [];
           acc[date].push(menu);
@@ -110,9 +100,11 @@ const OrderForm = () => {
     fetchMenus();
   }, [selectedShift]);
 
+  // ✅ Pilih menu untuk tiap hari
   const handleMenuSelect = (day, menuId) =>
     setSelectedMenus((prev) => ({ ...prev, [day]: menuId }));
 
+  // 📨 Kirim order
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -138,7 +130,7 @@ const OrderForm = () => {
     }
   };
 
-  // ✅ Saat loading tampilkan spinner di tengah layar
+  // 🌀 Loading state
   if (loading) {
     return (
       <MobileLayout>
@@ -147,12 +139,11 @@ const OrderForm = () => {
     );
   }
 
-  // ✅ Layout utama
+  // 🧩 Layout utama
   return (
     <MobileLayout>
       <PageContainer>
         <div className="px-4 py-6 space-y-6">
-          {/* Sudah memesan */}
           {alreadyOrdered ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-md">
               <Lock className="w-12 h-12 mx-auto text-primary-600 mb-4" />
@@ -210,6 +201,7 @@ const OrderForm = () => {
                         <h3 className="font-bold text-lg mb-3">
                           {day.format("dddd, DD MMM")}
                         </h3>
+
                         {menus.length === 0 ? (
                           <p className="text-gray-500 text-center py-6">
                             Tidak ada menu untuk hari ini
@@ -236,18 +228,18 @@ const OrderForm = () => {
                                       {menu.name}
                                     </h4>
                                     <p className="text-sm text-gray-600">
-                                      {menu.descriptions}
+                                      {menu.descriptions || "-"}
                                     </p>
+                                    {menu.meal_tray && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        🍱 {menu.meal_tray.name}
+                                      </p>
+                                    )}
                                   </div>
                                   {selected && (
                                     <CheckCircle2 className="w-6 h-6 text-primary-600" />
                                   )}
                                 </div>
-                                {menu.vendor_catering?.vendor?.name && (
-                                  <p className="text-xs text-gray-500 mt-2">
-                                    👨‍🍳 {menu.vendor_catering.vendor.name}
-                                  </p>
-                                )}
                               </button>
                             );
                           })
@@ -256,7 +248,7 @@ const OrderForm = () => {
                     );
                   })}
 
-                  {/* Pesan feedback */}
+                  {/* Feedback */}
                   {error && (
                     <div className="bg-red-100 text-red-800 p-4 rounded-lg text-center">
                       ⚠️ {error}
@@ -268,7 +260,7 @@ const OrderForm = () => {
                     </div>
                   )}
 
-                  {/* Tombol kirim */}
+                  {/* Tombol submit */}
                   <button
                     type="submit"
                     disabled={
